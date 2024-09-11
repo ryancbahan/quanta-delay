@@ -32,6 +32,7 @@ private:
     juce::Slider mixParamSlider;
     juce::Slider feedbackParamSlider;
     juce::Slider delayTimeParamSlider;
+    juce::Slider delayLinesParamSlider;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessorEditor)
 };

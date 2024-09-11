@@ -27,7 +27,8 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     mixParameter = parameters.getRawParameterValue("mix");
     delayTimeParameter = parameters.getRawParameterValue("delayTime");
     feedbackParameter = parameters.getRawParameterValue("feedback");
-    
+    delayLinesParameter = parameters.getRawParameterValue("delayLines");
+
     delayManagerLeft.reset();
     delayManagerRight.reset();
 }
@@ -51,6 +52,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("feedback", 3), "Feedback",
         juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID("delayLines", 1), "Delay Lines", 1, 8, 1));
     
     return { params.begin(), params.end() };
     
@@ -182,6 +186,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float mixValue = mixParameter->load();
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
+    int delayLinesValue = static_cast<int>(std::round(delayLinesParameter->load()));
     
     delayManagerLeft.setDelayTime(delayTimeValue);
     delayManagerRight.setDelayTime(delayTimeValue);

@@ -65,7 +65,8 @@ private:
     std::atomic<float>* mixParameter = nullptr;
     std::atomic<float>* delayTimeParameter = nullptr;
     std::atomic<float>* feedbackParameter = nullptr;
-    
+    std::atomic<float>* delayLinesParameter = nullptr;
+
     DelayManager delayManagerLeft;
     DelayManager delayManagerRight;
 
