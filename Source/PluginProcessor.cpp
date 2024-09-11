@@ -143,10 +143,8 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         delayManagersRight[i].prepare(spec, currentDelayTime);
         stereoManagers[i].prepare(spec);
 
-        float position = (i % 2 == 0) ? -0.5f : 0.5f; // Alternate between left and right
-        stereoManagers[i].setPosition(position);
+        stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
     }
-
 
     smoothedDelayLines.reset(sampleRate, 0.05);
     smoothedDelayLines.setCurrentAndTargetValue(1.0f);

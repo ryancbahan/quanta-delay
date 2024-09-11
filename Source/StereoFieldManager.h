@@ -11,9 +11,12 @@ public:
     void reset();
 
     void setPosition(float newPosition);
+    void calculateAndSetPosition(int delayIndex, int totalDelays);
     void process(float& leftSample, float& rightSample);
 
 private:
+    float calculateStereoPosition(int delayIndex, int totalDelays);
+
     juce::SmoothedValue<float> smoothedPosition;
     float sampleRate;
 
