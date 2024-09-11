@@ -73,8 +73,8 @@ private:
     std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersRight;
-    LFOManager lfoManagerLeft; 
-    LFOManager lfoManagerRight;
+    std::array<LFOManager, MAX_DELAY_LINES> lfoManagersLeft;
+    std::array<LFOManager, MAX_DELAY_LINES> lfoManagersRight;
     
     juce::SmoothedValue<float> smoothedDelayLines;
     int previousDelayLinesValue = 1;

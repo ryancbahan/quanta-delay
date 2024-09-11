@@ -15,10 +15,14 @@ public:
     
     float getNextSample();
 
+    void calculateAndSetRate(float normalizedPosition);
+
 private:
     juce::dsp::Oscillator<float> lfo;
     float depth;
-    float sampleRate;
+    double sampleRate;
+    
+    float mapToFrequencyRange(float input) const;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LFOManager)
 };
