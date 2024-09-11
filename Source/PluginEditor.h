@@ -34,6 +34,7 @@ private:
     juce::Slider delayTimeParamSlider;
     juce::Slider delayLinesParamSlider;
     juce::Slider depthParamSlider;
+    juce::Slider spreadParamSlider;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessorEditor)
 };

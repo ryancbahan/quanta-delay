@@ -70,6 +70,7 @@ private:
     std::atomic<float>* feedbackParameter = nullptr;
     std::atomic<float>* delayLinesParameter = nullptr;
     std::atomic<float>* depthParameter = nullptr;
+    std::atomic<float>* spreadParameter = nullptr;
     
     std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
