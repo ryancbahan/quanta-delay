@@ -251,8 +251,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float lfoValueLeft = lfoManagersLeft[i].getNextSample();
             float lfoValueRight = lfoManagersRight[i].getNextSample();
             
-            float currentDelayTimeLeft = delayTimeValue * std::pow(0.66f, i) + lfoValueLeft;
-            float currentDelayTimeRight = delayTimeValue * std::pow(0.66f, i) + lfoValueRight;
+            float currentDelayTimeLeft = delayTimeValue * std::pow(0.875f, i) + lfoValueLeft;
+            float currentDelayTimeRight = delayTimeValue * std::pow(0.875f, i) + lfoValueRight;
 
             delayManagersLeft[i].setDelayTime(currentDelayTimeLeft);
             delayManagersRight[i].setDelayTime(currentDelayTimeRight);
@@ -277,8 +277,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float lfoValueLeft = lfoManagersLeft[fullDelayLines].getNextSample();
             float lfoValueRight = lfoManagersRight[fullDelayLines].getNextSample();
             
-            float currentDelayTimeLeft = delayTimeValue * std::pow(0.66f, fullDelayLines) + lfoValueLeft;
-            float currentDelayTimeRight = delayTimeValue * std::pow(0.66f, fullDelayLines) + lfoValueRight;
+            float currentDelayTimeLeft = delayTimeValue * std::pow(0.875f, fullDelayLines) + lfoValueLeft;
+            float currentDelayTimeRight = delayTimeValue * std::pow(0.875f, fullDelayLines) + lfoValueRight;
 
             delayManagersLeft[fullDelayLines].setDelayTime(currentDelayTimeLeft);
             delayManagersRight[fullDelayLines].setDelayTime(currentDelayTimeRight);
@@ -295,8 +295,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         }
 
         // Scale the wet signal by the current (smoothed) number of delay lines
-        wetSignalLeft /= currentDelayLines;
-        wetSignalRight /= currentDelayLines;
+//        wetSignalLeft /= currentDelayLines;
+//        wetSignalRight /= currentDelayLines;
 
         // Combine dry and wet signals
         leftChannel[sample] = inputSampleLeft + mixValue * wetSignalLeft;
