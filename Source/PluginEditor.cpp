@@ -23,6 +23,8 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     juce::AudioParameterFloat* delayTimeParameter = (juce::AudioParameterFloat*)params.getUnchecked(1);
     juce::AudioParameterFloat* feedbackParameter = (juce::AudioParameterFloat*)params.getUnchecked(2);
     juce::AudioParameterInt* delayLinesParameter = (juce::AudioParameterInt*)params.getUnchecked(3);
+    juce::AudioParameterFloat* depthParameter = (juce::AudioParameterFloat*)params.getUnchecked(4);
+
     
     // Mix parameter slider
     mixParamSlider.setBounds(0, 0, 100, 100);
@@ -102,6 +104,27 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     
     delayLinesParamSlider.onDragEnd = [delayLinesParameter] {
         delayLinesParameter->endChangeGesture();
+    };
+    
+    
+    // depth parameter slider
+    depthParamSlider.setBounds(300, 0, 100, 100);
+    depthParamSlider.setSliderStyle(juce::Slider::SliderStyle::RotaryVerticalDrag);
+    depthParamSlider.setTextBoxStyle(juce::Slider::TextEntryBoxPosition::NoTextBox, true, 0, 0);
+    depthParamSlider.setRange(depthParameter->range.start, depthParameter->range.end);
+    depthParamSlider.setValue(*depthParameter);
+    addAndMakeVisible(depthParamSlider);
+    
+    depthParamSlider.onValueChange = [this, depthParameter] {
+        *depthParameter = depthParamSlider.getValue();
+    };
+    
+    depthParamSlider.onDragStart = [depthParameter] {
+        depthParameter->beginChangeGesture();
+    };
+    
+    depthParamSlider.onDragEnd = [depthParameter] {
+        depthParameter->endChangeGesture();
     };
 }
 
