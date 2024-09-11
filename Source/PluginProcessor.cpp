@@ -173,30 +173,42 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 {
     juce::ScopedNoDenormals noDenormals;
     
-    juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
-    
-    // Split the context into left and right channels
-    auto leftContext = context.getOutputBlock().getSingleChannelBlock(0);
-    auto rightContext = context.getOutputBlock().getSingleChannelBlock(1);
-    
-    juce::dsp::ProcessContextReplacing<float> leftContextReplacing(leftContext);
-    juce::dsp::ProcessContextReplacing<float> rightContextReplacing(rightContext);
-    
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
     float mixValue = mixParameter->load();
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
     int delayLinesValue = static_cast<int>(std::round(delayLinesParameter->load()));
-    
-    delayManagerLeft.setDelayTime(delayTimeValue);
-    delayManagerRight.setDelayTime(delayTimeValue);
-    delayManagerLeft.setFeedback(feedbackValue);
-    delayManagerRight.setFeedback(feedbackValue);
-    delayManagerLeft.setWetLevel(mixValue);
-    delayManagerRight.setWetLevel(mixValue);
-    
-    delayManagerLeft.process(leftContextReplacing);
-    delayManagerRight.process(rightContextReplacing);
+
+    // Update parameters for all delay lines
+    for (int i = 0; i < delayLinesValue; ++i)
+    {
+        float currentDelayTime = delayTimeValue / std::pow(2, i);
+        float currentWetLevel = mixValue / delayLinesValue;
+
+        delayManagerLeft.setDelayTime(currentDelayTime);
+        delayManagerRight.setDelayTime(currentDelayTime);
+        delayManagerLeft.setFeedback(feedbackValue);
+        delayManagerRight.setFeedback(feedbackValue);
+        delayManagerLeft.setWetLevel(currentWetLevel);
+        delayManagerRight.setWetLevel(currentWetLevel);
+    }
+
+    // Process samples
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        auto* channelData = buffer.getWritePointer(channel);
+        DelayManager& delayManager = (channel == 0) ? delayManagerLeft : delayManagerRight;
+
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            channelData[sample] = delayManager.processSample(channelData[sample]);
+        }
+    }
 }
 
 //==============================================================================

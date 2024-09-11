@@ -1,24 +1,26 @@
 #include "DelayManager.h"
 
 DelayManager::DelayManager()
-    : delayTimeInSamples(0.0f)
-    , feedback(0.5f)
+    : feedback(0.5f)
     , wetLevel(0.5f)
     , sampleRate(44100.0)
-    , maxDelayTimeInSeconds(2.0f)
 {
 }
 
-void DelayManager::prepare(const juce::dsp::ProcessSpec& spec, float initialDelayTime) {
+void DelayManager::prepare(const juce::dsp::ProcessSpec& spec, float initialDelayTime)
+{
     sampleRate = spec.sampleRate;
-    reset();
-    
-    int maxDelaySamples = static_cast<int>(maxDelayTimeInSeconds * sampleRate);
-    delayLine.setMaximumDelayInSamples(maxDelaySamples);
     delayLine.prepare(spec);
+    delayLine.setMaximumDelayInSamples(sampleRate * 2.0); // Maximum 2 seconds delay
     
-    smoothedDelayTime.reset(sampleRate, 0.05); // 50ms smoothing time
-    smoothedDelayTime.setCurrentAndTargetValue(initialDelayTime);
+    smoothedDelayTime.reset(sampleRate, 0.05);
+    smoothedDelayTime.setCurrentAndTargetValue(initialDelayTime * sampleRate);
+    
+    smoothedFeedback.reset(sampleRate, 0.05);
+    smoothedFeedback.setCurrentAndTargetValue(feedback);
+    
+    smoothedWetLevel.reset(sampleRate, 0.05);
+    smoothedWetLevel.setCurrentAndTargetValue(wetLevel);
 }
 
 void DelayManager::reset()
@@ -28,43 +30,30 @@ void DelayManager::reset()
 
 void DelayManager::setDelayTime(float delayTimeInSeconds)
 {
-    smoothedDelayTime.setTargetValue(delayTimeInSeconds);
+    smoothedDelayTime.setTargetValue(delayTimeInSeconds * sampleRate);
 }
 
 void DelayManager::setFeedback(float newFeedback)
 {
-    feedback = juce::jlimit(0.0f, 0.95f, newFeedback);
+    smoothedFeedback.setTargetValue(newFeedback);
 }
 
 void DelayManager::setWetLevel(float newWetLevel)
 {
-    wetLevel = juce::jlimit(0.0f, 1.0f, newWetLevel);
+    smoothedWetLevel.setTargetValue(newWetLevel);
 }
 
-void DelayManager::process(const juce::dsp::ProcessContextReplacing<float>& context)
+float DelayManager::processSample(float inputSample)
 {
-    auto& inputBlock = context.getInputBlock();
-    auto& outputBlock = context.getOutputBlock();
-    auto numSamples = inputBlock.getNumSamples();
-    auto numChannels = inputBlock.getNumChannels();
-
-    for (size_t channel = 0; channel < numChannels; ++channel)
-    {
-        auto* inputSamples = inputBlock.getChannelPointer(channel);
-        auto* outputSamples = outputBlock.getChannelPointer(channel);
-
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            float currentDelayTime = smoothedDelayTime.getNextValue();
-            delayLine.setDelay(currentDelayTime * sampleRate);
-
-            float delaySample = delayLine.popSample(channel);
-            float inputSample = inputSamples[i];
-
-            float delayedSample = inputSample + feedback * delaySample;
-            delayLine.pushSample(channel, delayedSample);
-
-            outputSamples[i] = inputSample + wetLevel * delaySample;
-        }
-    }
+    float currentDelayTime = smoothedDelayTime.getNextValue();
+    float currentFeedback = smoothedFeedback.getNextValue();
+    float currentWetLevel = smoothedWetLevel.getNextValue();
+    
+    delayLine.setDelay(currentDelayTime);
+    
+    float delayedSample = delayLine.popSample(0);
+    float feedbackSample = delayedSample * currentFeedback;
+    delayLine.pushSample(0, inputSample + feedbackSample);
+    
+    return inputSample * (1.0f - currentWetLevel) + delayedSample * currentWetLevel;
 }
