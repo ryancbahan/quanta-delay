@@ -28,6 +28,8 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     delayTimeParameter = parameters.getRawParameterValue("delayTime");
     feedbackParameter = parameters.getRawParameterValue("feedback");
     delayLinesParameter = parameters.getRawParameterValue("delayLines");
+    depthParameter = parameters.getRawParameterValue("depth");
+
 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
@@ -58,6 +60,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     
     params.push_back(std::make_unique<juce::AudioParameterInt>(
             juce::ParameterID("delayLines", 1), "Delay Lines", 1, 8, 1));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("depth", 3), "Depth",
+        juce::NormalisableRange<float>(0.0f, 10.0f), 0.5f));
     
     return { params.begin(), params.end() };
     
@@ -204,6 +210,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float mixValue = mixParameter->load();
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
+    float depthValue = depthParameter->load();
     int targetDelayLines = static_cast<int>(std::round(delayLinesParameter->load()));
     targetDelayLines = juce::jlimit(1, MAX_DELAY_LINES, targetDelayLines);
 
@@ -222,6 +229,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         float normalizedPosition = static_cast<float>(i) / static_cast<float>(i);
         lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
         lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
+        lfoManagersLeft[i].setDepth(depthValue);
+        lfoManagersRight[i].setDepth(depthValue);
     }
 
     auto* leftChannel = buffer.getWritePointer(0);
