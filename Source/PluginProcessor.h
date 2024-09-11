@@ -16,7 +16,7 @@
 #include "LFOManager.h"
 
 #define MAX_DELAY_TIME 2
-#define MAX_DELAY_LINES 8
+#define MAX_DELAY_LINES 20
 
 //==============================================================================
 /**
