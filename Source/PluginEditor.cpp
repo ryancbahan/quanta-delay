@@ -24,6 +24,7 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     juce::AudioParameterFloat* feedbackParameter = (juce::AudioParameterFloat*)params.getUnchecked(2);
     juce::AudioParameterInt* delayLinesParameter = (juce::AudioParameterInt*)params.getUnchecked(3);
     juce::AudioParameterFloat* depthParameter = (juce::AudioParameterFloat*)params.getUnchecked(4);
+    juce::AudioParameterFloat* spreadParameter = (juce::AudioParameterFloat*)params.getUnchecked(5);
 
     
     // Mix parameter slider
@@ -125,6 +126,26 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     
     depthParamSlider.onDragEnd = [depthParameter] {
         depthParameter->endChangeGesture();
+    };
+    
+    // depth parameter slider
+    spreadParamSlider.setBounds(200, 100, 100, 100);
+    spreadParamSlider.setSliderStyle(juce::Slider::SliderStyle::RotaryVerticalDrag);
+    spreadParamSlider.setTextBoxStyle(juce::Slider::TextEntryBoxPosition::NoTextBox, true, 0, 0);
+    spreadParamSlider.setRange(spreadParameter->range.start, spreadParameter->range.end);
+    spreadParamSlider.setValue(*spreadParameter);
+    addAndMakeVisible(spreadParamSlider);
+    
+    spreadParamSlider.onValueChange = [this, spreadParameter] {
+        *spreadParameter = spreadParamSlider.getValue();
+    };
+    
+    depthParamSlider.onDragStart = [spreadParameter] {
+        spreadParameter->beginChangeGesture();
+    };
+    
+    depthParamSlider.onDragEnd = [spreadParameter] {
+        spreadParameter->endChangeGesture();
     };
 }
 
