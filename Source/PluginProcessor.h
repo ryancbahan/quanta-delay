@@ -14,6 +14,7 @@
 #include "DelayManager.h"
 
 #define MAX_DELAY_TIME 2
+#define MAX_DELAY_LINES 8
 
 //==============================================================================
 /**
@@ -67,8 +68,10 @@ private:
     std::atomic<float>* feedbackParameter = nullptr;
     std::atomic<float>* delayLinesParameter = nullptr;
 
-    DelayManager delayManagerLeft;
-    DelayManager delayManagerRight;
+    std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
+    std::array<DelayManager, MAX_DELAY_LINES> delayManagersRight;
+    
+    int previousDelayLinesValue = 1;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessor)

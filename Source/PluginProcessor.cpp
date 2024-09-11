@@ -29,8 +29,11 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     feedbackParameter = parameters.getRawParameterValue("feedback");
     delayLinesParameter = parameters.getRawParameterValue("delayLines");
 
-    delayManagerLeft.reset();
-    delayManagerRight.reset();
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        delayManagersLeft[i].reset();
+        delayManagersRight[i].reset();
+    }
 }
 
 QuantadelayAudioProcessor::~QuantadelayAudioProcessor()
@@ -133,8 +136,12 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     float initialDelayTime = *delayTimeParameter;
 
-    delayManagerLeft.prepare(spec, initialDelayTime);
-    delayManagerRight.prepare(spec, initialDelayTime);
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        float currentDelayTime = initialDelayTime * std::pow(0.66f, i);
+        delayManagersLeft[i].prepare(spec, currentDelayTime);
+        delayManagersRight[i].prepare(spec, currentDelayTime);
+    }
 }
 
 void QuantadelayAudioProcessor::releaseResources()
@@ -183,30 +190,39 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
     int delayLinesValue = static_cast<int>(std::round(delayLinesParameter->load()));
+    delayLinesValue = juce::jlimit(1, MAX_DELAY_LINES, delayLinesValue);
 
-    // Update parameters for all delay lines
+    // Update parameters for all active delay lines
     for (int i = 0; i < delayLinesValue; ++i)
     {
-        float currentDelayTime = delayTimeValue / std::pow(2, i);
+        float currentDelayTime = delayTimeValue * std::pow(0.66f, i);
         float currentWetLevel = mixValue / delayLinesValue;
 
-        delayManagerLeft.setDelayTime(currentDelayTime);
-        delayManagerRight.setDelayTime(currentDelayTime);
-        delayManagerLeft.setFeedback(feedbackValue);
-        delayManagerRight.setFeedback(feedbackValue);
-        delayManagerLeft.setWetLevel(currentWetLevel);
-        delayManagerRight.setWetLevel(currentWetLevel);
+        delayManagersLeft[i].setDelayTime(currentDelayTime);
+        delayManagersRight[i].setDelayTime(currentDelayTime);
+        delayManagersLeft[i].setFeedback(feedbackValue);
+        delayManagersRight[i].setFeedback(feedbackValue);
+        delayManagersLeft[i].setWetLevel(currentWetLevel);
+        delayManagersRight[i].setWetLevel(currentWetLevel);
     }
 
     // Process samples
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer(channel);
-        DelayManager& delayManager = (channel == 0) ? delayManagerLeft : delayManagerRight;
+        auto& delayManagers = (channel == 0) ? delayManagersLeft : delayManagersRight;
 
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            channelData[sample] = delayManager.processSample(channelData[sample]);
+            float inputSample = channelData[sample];
+            float outputSample = inputSample;
+
+            for (int i = 0; i < delayLinesValue; ++i)
+            {
+                outputSample += delayManagers[i].processSample(inputSample) - inputSample;
+            }
+
+            channelData[sample] = outputSample;
         }
     }
 }
