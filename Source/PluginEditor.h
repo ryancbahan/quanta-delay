@@ -14,11 +14,11 @@
 //==============================================================================
 /**
 */
-class Quantadelay2AudioProcessorEditor  : public juce::AudioProcessorEditor
+class QuantadelayAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    Quantadelay2AudioProcessorEditor (Quantadelay2AudioProcessor&);
-    ~Quantadelay2AudioProcessorEditor() override;
+    QuantadelayAudioProcessorEditor (QuantadelayAudioProcessor&);
+    ~QuantadelayAudioProcessorEditor() override;
 
     //==============================================================================
     void paint (juce::Graphics&) override;
@@ -27,7 +27,11 @@ public:
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
-    Quantadelay2AudioProcessor& audioProcessor;
+    QuantadelayAudioProcessor& audioProcessor;
+    
+    juce::Slider mixParamSlider;
+    juce::Slider feedbackParamSlider;
+    juce::Slider delayTimeParamSlider;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Quantadelay2AudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessorEditor)
 };

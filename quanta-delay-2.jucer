@@ -12,6 +12,9 @@
             file="Source/PluginEditor.cpp"/>
       <FILE id="su2QxK" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
+    <FILE id="sYxbhP" name="DelayManager.cpp" compile="1" resource="0"
+          file="Source/DelayManager.cpp"/>
+    <FILE id="aNWT9i" name="DelayManager.h" compile="0" resource="0" file="Source/DelayManager.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

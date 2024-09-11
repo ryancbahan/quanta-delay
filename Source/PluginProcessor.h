@@ -9,16 +9,21 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <juce_dsp/juce_dsp.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "DelayManager.h"
+
+#define MAX_DELAY_TIME 2
 
 //==============================================================================
 /**
 */
-class Quantadelay2AudioProcessor  : public juce::AudioProcessor
+class QuantadelayAudioProcessor  : public juce::AudioProcessor
 {
 public:
     //==============================================================================
-    Quantadelay2AudioProcessor();
-    ~Quantadelay2AudioProcessor() override;
+    QuantadelayAudioProcessor();
+    ~QuantadelayAudioProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -52,8 +57,18 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    juce::AudioProcessorValueTreeState parameters;
 
 private:
+    std::atomic<float>* mixParameter = nullptr;
+    std::atomic<float>* delayTimeParameter = nullptr;
+    std::atomic<float>* feedbackParameter = nullptr;
+    
+    DelayManager delayManagerLeft;
+    DelayManager delayManagerRight;
+
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Quantadelay2AudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessor)
 };

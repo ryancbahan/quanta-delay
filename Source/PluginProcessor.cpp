@@ -10,7 +10,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-Quantadelay2AudioProcessor::Quantadelay2AudioProcessor()
+QuantadelayAudioProcessor::QuantadelayAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
@@ -19,22 +19,51 @@ Quantadelay2AudioProcessor::Quantadelay2AudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+                    parameters(*this, nullptr, "Parameters", createParameterLayout())
+
 #endif
+{
+    mixParameter = parameters.getRawParameterValue("mix");
+    delayTimeParameter = parameters.getRawParameterValue("delayTime");
+    feedbackParameter = parameters.getRawParameterValue("feedback");
+    
+    delayManagerLeft.reset();
+    delayManagerRight.reset();
+}
+
+QuantadelayAudioProcessor::~QuantadelayAudioProcessor()
 {
 }
 
-Quantadelay2AudioProcessor::~Quantadelay2AudioProcessor()
+juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::createParameterLayout()
 {
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("mix", 1), "mix",
+        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("delayTime", 2), "Delay time",
+        juce::NormalisableRange<float>(0.0f, 2.0f), 0.5f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("feedback", 3), "Feedback",
+        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+    
+    return { params.begin(), params.end() };
+    
+    return { params.begin(), params.end() };
 }
 
 //==============================================================================
-const juce::String Quantadelay2AudioProcessor::getName() const
+const juce::String QuantadelayAudioProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool Quantadelay2AudioProcessor::acceptsMidi() const
+bool QuantadelayAudioProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -43,7 +72,7 @@ bool Quantadelay2AudioProcessor::acceptsMidi() const
    #endif
 }
 
-bool Quantadelay2AudioProcessor::producesMidi() const
+bool QuantadelayAudioProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -52,7 +81,7 @@ bool Quantadelay2AudioProcessor::producesMidi() const
    #endif
 }
 
-bool Quantadelay2AudioProcessor::isMidiEffect() const
+bool QuantadelayAudioProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -61,50 +90,57 @@ bool Quantadelay2AudioProcessor::isMidiEffect() const
    #endif
 }
 
-double Quantadelay2AudioProcessor::getTailLengthSeconds() const
+double QuantadelayAudioProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int Quantadelay2AudioProcessor::getNumPrograms()
+int QuantadelayAudioProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int Quantadelay2AudioProcessor::getCurrentProgram()
+int QuantadelayAudioProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void Quantadelay2AudioProcessor::setCurrentProgram (int index)
+void QuantadelayAudioProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String Quantadelay2AudioProcessor::getProgramName (int index)
+const juce::String QuantadelayAudioProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void Quantadelay2AudioProcessor::changeProgramName (int index, const juce::String& newName)
+void QuantadelayAudioProcessor::changeProgramName (int index, const juce::String& newName)
 {
 }
 
 //==============================================================================
-void Quantadelay2AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (samplesPerBlock);
+    spec.numChannels = getTotalNumOutputChannels();
+
+    float initialDelayTime = *delayTimeParameter;
+
+    delayManagerLeft.prepare(spec, initialDelayTime);
+    delayManagerRight.prepare(spec, initialDelayTime);
 }
 
-void Quantadelay2AudioProcessor::releaseResources()
+void QuantadelayAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-bool Quantadelay2AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool QuantadelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
@@ -129,55 +165,55 @@ bool Quantadelay2AudioProcessor::isBusesLayoutSupported (const BusesLayout& layo
 }
 #endif
 
-void Quantadelay2AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
-    }
+    
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+    
+    // Split the context into left and right channels
+    auto leftContext = context.getOutputBlock().getSingleChannelBlock(0);
+    auto rightContext = context.getOutputBlock().getSingleChannelBlock(1);
+    
+    juce::dsp::ProcessContextReplacing<float> leftContextReplacing(leftContext);
+    juce::dsp::ProcessContextReplacing<float> rightContextReplacing(rightContext);
+    
+    float mixValue = mixParameter->load();
+    float delayTimeValue = delayTimeParameter->load();
+    float feedbackValue = feedbackParameter->load();
+    
+    delayManagerLeft.setDelayTime(delayTimeValue);
+    delayManagerRight.setDelayTime(delayTimeValue);
+    delayManagerLeft.setFeedback(feedbackValue);
+    delayManagerRight.setFeedback(feedbackValue);
+    delayManagerLeft.setWetLevel(mixValue);
+    delayManagerRight.setWetLevel(mixValue);
+    
+    delayManagerLeft.process(leftContextReplacing);
+    delayManagerRight.process(rightContextReplacing);
 }
 
 //==============================================================================
-bool Quantadelay2AudioProcessor::hasEditor() const
+bool QuantadelayAudioProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* Quantadelay2AudioProcessor::createEditor()
+juce::AudioProcessorEditor* QuantadelayAudioProcessor::createEditor()
 {
-    return new Quantadelay2AudioProcessorEditor (*this);
+    return new QuantadelayAudioProcessorEditor (*this);
 }
 
 //==============================================================================
-void Quantadelay2AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void QuantadelayAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
 }
 
-void Quantadelay2AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void QuantadelayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
@@ -187,5 +223,5 @@ void Quantadelay2AudioProcessor::setStateInformation (const void* data, int size
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new Quantadelay2AudioProcessor();
+    return new QuantadelayAudioProcessor();
 }
