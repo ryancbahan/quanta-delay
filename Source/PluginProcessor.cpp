@@ -27,9 +27,13 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     mixParameter = parameters.getRawParameterValue("mix");
     delayTimeParameter = parameters.getRawParameterValue("delayTime");
     feedbackParameter = parameters.getRawParameterValue("feedback");
-    
-    delayManagerLeft.reset();
-    delayManagerRight.reset();
+    delayLinesParameter = parameters.getRawParameterValue("delayLines");
+
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        delayManagersLeft[i].reset();
+        delayManagersRight[i].reset();
+    }
 }
 
 QuantadelayAudioProcessor::~QuantadelayAudioProcessor()
@@ -51,6 +55,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("feedback", 3), "Feedback",
         juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID("delayLines", 1), "Delay Lines", 1, 8, 1));
     
     return { params.begin(), params.end() };
     
@@ -129,8 +136,16 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     float initialDelayTime = *delayTimeParameter;
 
-    delayManagerLeft.prepare(spec, initialDelayTime);
-    delayManagerRight.prepare(spec, initialDelayTime);
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        float currentDelayTime = initialDelayTime * std::pow(0.66f, i);
+        delayManagersLeft[i].prepare(spec, currentDelayTime);
+        delayManagersRight[i].prepare(spec, currentDelayTime);
+    }
+
+
+    smoothedDelayLines.reset(sampleRate, 0.05);
+    smoothedDelayLines.setCurrentAndTargetValue(1.0f);
 }
 
 void QuantadelayAudioProcessor::releaseResources()
@@ -169,29 +184,64 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 {
     juce::ScopedNoDenormals noDenormals;
     
-    juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
-    
-    // Split the context into left and right channels
-    auto leftContext = context.getOutputBlock().getSingleChannelBlock(0);
-    auto rightContext = context.getOutputBlock().getSingleChannelBlock(1);
-    
-    juce::dsp::ProcessContextReplacing<float> leftContextReplacing(leftContext);
-    juce::dsp::ProcessContextReplacing<float> rightContextReplacing(rightContext);
-    
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
     float mixValue = mixParameter->load();
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
-    
-    delayManagerLeft.setDelayTime(delayTimeValue);
-    delayManagerRight.setDelayTime(delayTimeValue);
-    delayManagerLeft.setFeedback(feedbackValue);
-    delayManagerRight.setFeedback(feedbackValue);
-    delayManagerLeft.setWetLevel(mixValue);
-    delayManagerRight.setWetLevel(mixValue);
-    
-    delayManagerLeft.process(leftContextReplacing);
-    delayManagerRight.process(rightContextReplacing);
+    int targetDelayLines = static_cast<int>(std::round(delayLinesParameter->load()));
+    targetDelayLines = juce::jlimit(1, MAX_DELAY_LINES, targetDelayLines);
+
+    smoothedDelayLines.setTargetValue(static_cast<float>(targetDelayLines));
+
+    // Update parameters for all delay lines
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        float currentDelayTime = delayTimeValue * std::pow(0.66f, i);
+
+        delayManagersLeft[i].setDelayTime(currentDelayTime);
+        delayManagersRight[i].setDelayTime(currentDelayTime);
+        delayManagersLeft[i].setFeedback(feedbackValue);
+        delayManagersRight[i].setFeedback(feedbackValue);
+    }
+
+    // Process samples
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        auto* channelData = buffer.getWritePointer(channel);
+        auto& delayManagers = (channel == 0) ? delayManagersLeft : delayManagersRight;
+
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            float inputSample = channelData[sample];
+            float wetSignal = 0.0f;
+
+            float currentDelayLines = smoothedDelayLines.getNextValue();
+            int fullDelayLines = static_cast<int>(std::floor(currentDelayLines));
+
+            for (int i = 0; i < fullDelayLines; ++i)
+            {
+                wetSignal += delayManagers[i].processSample(inputSample);
+            }
+
+            // Add partial contribution from the transitioning delay line
+            if (fullDelayLines < MAX_DELAY_LINES)
+            {
+                float fraction = currentDelayLines - fullDelayLines;
+                wetSignal += fraction * delayManagers[fullDelayLines].processSample(inputSample);
+            }
+
+            // Scale the wet signal by the current (smoothed) number of delay lines
+            wetSignal /= currentDelayLines;
+
+            // Combine dry and wet signals
+            channelData[sample] = (1.0f - mixValue) * inputSample + mixValue * wetSignal;
+        }
+    }
 }
 
 //==============================================================================

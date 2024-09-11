@@ -1,4 +1,3 @@
-#pragma once
 
 #include <JuceHeader.h>
 
@@ -12,18 +11,17 @@ public:
     
     void setDelayTime(float delayTimeInSeconds);
     void setFeedback(float newFeedback);
-    void setWetLevel(float newWetLevel);
     
-    void process(const juce::dsp::ProcessContextReplacing<float>& context);
+    float processSample(float inputSample);
+    
 private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
     juce::SmoothedValue<float> smoothedDelayTime;
-    
-    float delayTimeInSamples;
+    juce::SmoothedValue<float> smoothedFeedback;
+    juce::SmoothedValue<float> smoothedWetLevel;
     float feedback;
     float wetLevel;
     double sampleRate;
-    float maxDelayTimeInSeconds;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayManager)
 };
