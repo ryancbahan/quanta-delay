@@ -147,8 +147,8 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         
         lfoManagersLeft[i].prepare(spec);
         lfoManagersRight[i].prepare(spec);
-        lfoManagersLeft[i].setDepth(5.0f);
-        lfoManagersRight[i].setDepth(5.0f);
+        lfoManagersLeft[i].setDepth(1.0f);
+        lfoManagersRight[i].setDepth(1.0f);
         
         float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
         lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
@@ -218,6 +218,10 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         delayManagersRight[i].setDelayTime(currentDelayTime);
         delayManagersLeft[i].setFeedback(feedbackValue);
         delayManagersRight[i].setFeedback(feedbackValue);
+        
+        float normalizedPosition = static_cast<float>(i) / static_cast<float>(i);
+        lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
+        lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
     }
 
     auto* leftChannel = buffer.getWritePointer(0);

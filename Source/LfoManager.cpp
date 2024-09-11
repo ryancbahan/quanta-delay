@@ -43,5 +43,5 @@ void LFOManager::calculateAndSetRate(float normalizedPosition)
 float LFOManager::mapToFrequencyRange(float input) const
 {
     // Map input from 0-1 to 0.2-10 Hz (1/5 Hz to 10 Hz)
-    return juce::jmax(0.2f, 0.2f + input * 19.8f);
+    return juce::jmax(0.2f, 0.2f + input * 9.8f);
 }
