@@ -133,6 +133,9 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = static_cast<juce::uint32> (samplesPerBlock);
     spec.numChannels = getTotalNumOutputChannels();
+    
+    lfoManagerLeft.prepare(spec);
+    lfoManagerRight.prepare(spec);
 
     float initialDelayTime = *delayTimeParameter;
 
@@ -210,6 +213,11 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         delayManagersLeft[i].setFeedback(feedbackValue);
         delayManagersRight[i].setFeedback(feedbackValue);
     }
+    
+    lfoManagerLeft.setRate(2.0f);
+    lfoManagerRight.setRate(2.0f);
+    lfoManagerLeft.setDepth(5.0f);
+    lfoManagerRight.setDepth(5.0f);
 
     auto* leftChannel = buffer.getWritePointer(0);
     auto* rightChannel = buffer.getWritePointer(1);
@@ -223,9 +231,20 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 
         float currentDelayLines = smoothedDelayLines.getNextValue();
         int fullDelayLines = static_cast<int>(std::floor(currentDelayLines));
+        
+        float lfoValueLeft = lfoManagerLeft.getNextSample();
+        float lfoValueRight = lfoManagerRight.getNextSample();
 
         for (int i = 0; i < fullDelayLines; ++i)
         {
+            float currentDelayTimeLeft = delayTimeValue * std::pow(0.66f, i) + lfoValueLeft;
+            float currentDelayTimeRight = delayTimeValue * std::pow(0.66f, i) + lfoValueRight;
+
+            delayManagersLeft[i].setDelayTime(currentDelayTimeLeft);
+            delayManagersRight[i].setDelayTime(currentDelayTimeRight);
+            delayManagersLeft[i].setFeedback(feedbackValue);
+            delayManagersRight[i].setFeedback(feedbackValue);
+            
             float delayedSampleLeft = delayManagersLeft[i].processSample(inputSampleLeft);
             float delayedSampleRight = delayManagersRight[i].processSample(inputSampleRight);
             

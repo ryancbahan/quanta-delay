@@ -13,6 +13,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DelayManager.h"
 #include "StereoFieldManager.h"
+#include "LFOManager.h"
 
 #define MAX_DELAY_TIME 2
 #define MAX_DELAY_LINES 8
@@ -72,6 +73,8 @@ private:
     std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersRight;
+    LFOManager lfoManagerLeft; 
+    LFOManager lfoManagerRight;
     
     juce::SmoothedValue<float> smoothedDelayLines;
     int previousDelayLinesValue = 1;
