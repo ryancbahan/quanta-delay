@@ -12,6 +12,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DelayManager.h"
+#include "StereoFieldManager.h"
 
 #define MAX_DELAY_TIME 2
 #define MAX_DELAY_LINES 8
@@ -67,7 +68,8 @@ private:
     std::atomic<float>* delayTimeParameter = nullptr;
     std::atomic<float>* feedbackParameter = nullptr;
     std::atomic<float>* delayLinesParameter = nullptr;
-
+    
+    std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersRight;
     

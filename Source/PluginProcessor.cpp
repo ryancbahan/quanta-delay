@@ -141,8 +141,10 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         float currentDelayTime = initialDelayTime * std::pow(0.66f, i);
         delayManagersLeft[i].prepare(spec, currentDelayTime);
         delayManagersRight[i].prepare(spec, currentDelayTime);
-    }
+        stereoManagers[i].prepare(spec);
 
+        stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
+    }
 
     smoothedDelayLines.reset(sampleRate, 0.05);
     smoothedDelayLines.setCurrentAndTargetValue(1.0f);
@@ -209,38 +211,54 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         delayManagersRight[i].setFeedback(feedbackValue);
     }
 
-    // Process samples
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    auto* leftChannel = buffer.getWritePointer(0);
+    auto* rightChannel = buffer.getWritePointer(1);
+
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
-        auto* channelData = buffer.getWritePointer(channel);
-        auto& delayManagers = (channel == 0) ? delayManagersLeft : delayManagersRight;
+        float inputSampleLeft = leftChannel[sample];
+        float inputSampleRight = rightChannel[sample];
+        float wetSignalLeft = 0.0f;
+        float wetSignalRight = 0.0f;
 
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        float currentDelayLines = smoothedDelayLines.getNextValue();
+        int fullDelayLines = static_cast<int>(std::floor(currentDelayLines));
+
+        for (int i = 0; i < fullDelayLines; ++i)
         {
-            float inputSample = channelData[sample];
-            float wetSignal = 0.0f;
-
-            float currentDelayLines = smoothedDelayLines.getNextValue();
-            int fullDelayLines = static_cast<int>(std::floor(currentDelayLines));
-
-            for (int i = 0; i < fullDelayLines; ++i)
-            {
-                wetSignal += delayManagers[i].processSample(inputSample);
-            }
-
-            // Add partial contribution from the transitioning delay line
-            if (fullDelayLines < MAX_DELAY_LINES)
-            {
-                float fraction = currentDelayLines - fullDelayLines;
-                wetSignal += fraction * delayManagers[fullDelayLines].processSample(inputSample);
-            }
-
-            // Scale the wet signal by the current (smoothed) number of delay lines
-            wetSignal /= currentDelayLines;
-
-            // Combine dry and wet signals
-            channelData[sample] = (1.0f - mixValue) * inputSample + mixValue * wetSignal;
+            float delayedSampleLeft = delayManagersLeft[i].processSample(inputSampleLeft);
+            float delayedSampleRight = delayManagersRight[i].processSample(inputSampleRight);
+            
+            float leftOutput = delayedSampleLeft;
+            float rightOutput = delayedSampleRight;
+            stereoManagers[i].process(leftOutput, rightOutput);
+            
+            wetSignalLeft += leftOutput;
+            wetSignalRight += rightOutput;
         }
+
+        // Add partial contribution from the transitioning delay line
+        if (fullDelayLines < MAX_DELAY_LINES)
+        {
+            float fraction = currentDelayLines - fullDelayLines;
+            float delayedSampleLeft = delayManagersLeft[fullDelayLines].processSample(inputSampleLeft);
+            float delayedSampleRight = delayManagersRight[fullDelayLines].processSample(inputSampleRight);
+            
+            float leftOutput = delayedSampleLeft;
+            float rightOutput = delayedSampleRight;
+            stereoManagers[fullDelayLines].process(leftOutput, rightOutput);
+            
+            wetSignalLeft += fraction * leftOutput;
+            wetSignalRight += fraction * rightOutput;
+        }
+
+        // Scale the wet signal by the current (smoothed) number of delay lines
+        wetSignalLeft /= currentDelayLines;
+        wetSignalRight /= currentDelayLines;
+
+        // Combine dry and wet signals
+        leftChannel[sample] = (1.0f - mixValue) * inputSampleLeft + mixValue * wetSignalLeft;
+        rightChannel[sample] = (1.0f - mixValue) * inputSampleRight + mixValue * wetSignalRight;
     }
 }
 
