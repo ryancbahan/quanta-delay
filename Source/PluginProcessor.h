@@ -71,6 +71,7 @@ private:
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersRight;
     
+    juce::SmoothedValue<float> smoothedDelayLines;
     int previousDelayLinesValue = 1;
 
     //==============================================================================

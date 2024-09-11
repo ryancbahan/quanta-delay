@@ -142,6 +142,10 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         delayManagersLeft[i].prepare(spec, currentDelayTime);
         delayManagersRight[i].prepare(spec, currentDelayTime);
     }
+
+
+    smoothedDelayLines.reset(sampleRate, 0.05);
+    smoothedDelayLines.setCurrentAndTargetValue(1.0f);
 }
 
 void QuantadelayAudioProcessor::releaseResources()
@@ -189,11 +193,13 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float mixValue = mixParameter->load();
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
-    int delayLinesValue = static_cast<int>(std::round(delayLinesParameter->load()));
-    delayLinesValue = juce::jlimit(1, MAX_DELAY_LINES, delayLinesValue);
+    int targetDelayLines = static_cast<int>(std::round(delayLinesParameter->load()));
+    targetDelayLines = juce::jlimit(1, MAX_DELAY_LINES, targetDelayLines);
 
-    // Update parameters for all active delay lines
-    for (int i = 0; i < delayLinesValue; ++i)
+    smoothedDelayLines.setTargetValue(static_cast<float>(targetDelayLines));
+
+    // Update parameters for all delay lines
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
         float currentDelayTime = delayTimeValue * std::pow(0.66f, i);
 
@@ -214,13 +220,23 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float inputSample = channelData[sample];
             float wetSignal = 0.0f;
 
-            for (int i = 0; i < delayLinesValue; ++i)
+            float currentDelayLines = smoothedDelayLines.getNextValue();
+            int fullDelayLines = static_cast<int>(std::floor(currentDelayLines));
+
+            for (int i = 0; i < fullDelayLines; ++i)
             {
                 wetSignal += delayManagers[i].processSample(inputSample);
             }
 
-            // Scale the wet signal by the number of delay lines
-            wetSignal /= static_cast<float>(delayLinesValue);
+            // Add partial contribution from the transitioning delay line
+            if (fullDelayLines < MAX_DELAY_LINES)
+            {
+                float fraction = currentDelayLines - fullDelayLines;
+                wetSignal += fraction * delayManagers[fullDelayLines].processSample(inputSample);
+            }
+
+            // Scale the wet signal by the current (smoothed) number of delay lines
+            wetSignal /= currentDelayLines;
 
             // Combine dry and wet signals
             channelData[sample] = (1.0f - mixValue) * inputSample + mixValue * wetSignal;
