@@ -18,9 +18,6 @@ void DelayManager::prepare(const juce::dsp::ProcessSpec& spec, float initialDela
     
     smoothedFeedback.reset(sampleRate, 0.05);
     smoothedFeedback.setCurrentAndTargetValue(feedback);
-    
-    smoothedWetLevel.reset(sampleRate, 0.05);
-    smoothedWetLevel.setCurrentAndTargetValue(wetLevel);
 }
 
 void DelayManager::reset()
@@ -38,16 +35,10 @@ void DelayManager::setFeedback(float newFeedback)
     smoothedFeedback.setTargetValue(newFeedback);
 }
 
-void DelayManager::setWetLevel(float newWetLevel)
-{
-    smoothedWetLevel.setTargetValue(newWetLevel);
-}
-
 float DelayManager::processSample(float inputSample)
 {
     float currentDelayTime = smoothedDelayTime.getNextValue();
     float currentFeedback = smoothedFeedback.getNextValue();
-    float currentWetLevel = smoothedWetLevel.getNextValue();
     
     delayLine.setDelay(currentDelayTime);
     
@@ -55,5 +46,5 @@ float DelayManager::processSample(float inputSample)
     float feedbackSample = delayedSample * currentFeedback;
     delayLine.pushSample(0, inputSample + feedbackSample);
     
-    return inputSample * (1.0f - currentWetLevel) + delayedSample * currentWetLevel;
+    return delayedSample;
 }

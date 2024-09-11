@@ -196,14 +196,11 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     for (int i = 0; i < delayLinesValue; ++i)
     {
         float currentDelayTime = delayTimeValue * std::pow(0.66f, i);
-        float currentWetLevel = mixValue / delayLinesValue;
 
         delayManagersLeft[i].setDelayTime(currentDelayTime);
         delayManagersRight[i].setDelayTime(currentDelayTime);
         delayManagersLeft[i].setFeedback(feedbackValue);
         delayManagersRight[i].setFeedback(feedbackValue);
-        delayManagersLeft[i].setWetLevel(currentWetLevel);
-        delayManagersRight[i].setWetLevel(currentWetLevel);
     }
 
     // Process samples
@@ -215,14 +212,18 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
             float inputSample = channelData[sample];
-            float outputSample = inputSample;
+            float wetSignal = 0.0f;
 
             for (int i = 0; i < delayLinesValue; ++i)
             {
-                outputSample += delayManagers[i].processSample(inputSample) - inputSample;
+                wetSignal += delayManagers[i].processSample(inputSample);
             }
 
-            channelData[sample] = outputSample;
+            // Scale the wet signal by the number of delay lines
+            wetSignal /= static_cast<float>(delayLinesValue);
+
+            // Combine dry and wet signals
+            channelData[sample] = (1.0f - mixValue) * inputSample + mixValue * wetSignal;
         }
     }
 }

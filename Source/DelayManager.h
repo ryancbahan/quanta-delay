@@ -11,7 +11,6 @@ public:
     
     void setDelayTime(float delayTimeInSeconds);
     void setFeedback(float newFeedback);
-    void setWetLevel(float newWetLevel);
     
     float processSample(float inputSample);
     
