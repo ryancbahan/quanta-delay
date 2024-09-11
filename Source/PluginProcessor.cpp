@@ -303,10 +303,25 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         // Scale the wet signal by the current (smoothed) number of delay lines
 //        wetSignalLeft /= currentDelayLines;
 //        wetSignalRight /= currentDelayLines;
+        
+        const float tremRate = 0.25f / spreadValue;
+        const float tremDepth = 1.0f * spreadValue;
+        static float tremPhase = 0.0f;
+        const float tremPhaseInc = tremRate / getSampleRate();
+        
+        // Apply Harmonic Tremolo
+        float tremLfo = 0.5f + 0.5f * sinf(2.0f * M_PI * tremPhase);
+        float lowPass = wetSignalLeft * (1.0f - (tremDepth) * (tremLfo * 3)) + wetSignalRight * (tremDepth * tremLfo);
+        
+        float highPass = wetSignalLeft * (tremDepth * tremLfo) + wetSignalRight * (1.0f - tremDepth * tremLfo);
 
         // Combine dry and wet signals
-        leftChannel[sample] = inputSampleLeft + mixValue * wetSignalLeft;
-        rightChannel[sample] = inputSampleRight + mixValue * wetSignalRight;
+        leftChannel[sample] = inputSampleLeft + mixValue * lowPass;
+        rightChannel[sample] = inputSampleRight + mixValue * highPass;
+        
+        // Update tremolo phase
+        tremPhase += tremPhaseInc;
+        if (tremPhase >= 1.0f) tremPhase -= 1.0f;
     }
 }
 
