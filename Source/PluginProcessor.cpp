@@ -93,11 +93,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("lowPassFreq", 8), "Low Pass Freq",
-        juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
+        juce::NormalisableRange<float>(250.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("highPassFreq", 9), "High Pass Freq",
-        juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.3f), 20.0f));
+        juce::NormalisableRange<float>(20.0f, 2000.0f, 1.0f, 0.3f), 20.0f));
     
     return { params.begin(), params.end() };
     
@@ -345,17 +345,17 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-            leftOutput = highPassFilter.processSample(leftOutput);
-            leftOutput = lowPassFilter.processSample(leftOutput);
-            rightOutput = highPassFilter.processSample(rightOutput);
-            rightOutput = lowPassFilter.processSample(rightOutput);
-            
             if (i < octavesValue) {
                 pitchShifterManagers[i].process(leftOutput);
                 pitchShifterManagers[i].process(rightOutput);
             }
             tremoloManagers[i].process(leftOutput, rightOutput);
             stereoManagers[i].process(leftOutput, rightOutput);
+            
+            leftOutput = highPassFilter.processSample(leftOutput);
+            leftOutput = lowPassFilter.processSample(leftOutput);
+            rightOutput = highPassFilter.processSample(rightOutput);
+            rightOutput = lowPassFilter.processSample(rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
