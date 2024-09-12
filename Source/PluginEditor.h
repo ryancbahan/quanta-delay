@@ -24,6 +24,9 @@ private:
     juce::Slider depthParamSlider;
     juce::Slider spreadParamSlider;
     juce::Slider octavesParamSlider;
+    juce::Slider tempoParamSlider;
+
+    void createTempoKnob(juce::AudioParameterFloat* tempoParam);
 
     void setupKnob(juce::Slider& slider, juce::RangedAudioParameter* parameter,
                    int x, int y, int width, int height, const juce::String& labelText);

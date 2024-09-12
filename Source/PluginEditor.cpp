@@ -37,7 +37,8 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
 
     setupKnob(octavesParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(6)), 0, 150, 100, 100, "Octaves");
     octavesParamSlider.setLookAndFeel(customLookAndFeel.get());
-
+    
+    createTempoKnob(static_cast<juce::AudioParameterFloat*>(params.getUnchecked(7)));
 }
 
 // Destructor
@@ -69,6 +70,37 @@ void QuantadelayAudioProcessorEditor::paint (juce::Graphics& g)
 void QuantadelayAudioProcessorEditor::resized()
 {
     // This is where you'll layout the positions of your subcomponents
+}
+
+void QuantadelayAudioProcessorEditor::createTempoKnob(juce::AudioParameterFloat* tempoParam)
+{
+    tempoParamSlider.setBounds(100, 150, 100, 100);  // Position and size of the knob
+    tempoParamSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    tempoParamSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    tempoParamSlider.setRange(0.0, 6.0, 1.0);  // Range values correspond to the 1/1 to 1/64 note durations
+    tempoParamSlider.setValue(tempoParam->get());
+    addAndMakeVisible(tempoParamSlider);
+
+    tempoParamSlider.onValueChange = [this, tempoParam] {
+        float value = tempoParamSlider.getValue();
+        tempoParam->setValueNotifyingHost(value);
+    };
+
+    tempoParamSlider.onDragStart = [tempoParam] {
+        tempoParam->beginChangeGesture();
+    };
+
+    tempoParamSlider.onDragEnd = [tempoParam] {
+        tempoParam->endChangeGesture();
+    };
+    
+    auto* label = new juce::Label();
+    label->setText("Tempo", juce::NotificationType::dontSendNotification);
+    label->attachToComponent(&tempoParamSlider, false);
+    label->setJustificationType(juce::Justification::centred);
+    label->setBounds(100, 250, 100, 20); // Position label below the slider
+
+    addAndMakeVisible(*label);
 }
 
 //==============================================================================

@@ -13,7 +13,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DelayManager.h"
 #include "StereoFieldManager.h"
-#include "LFOManager.h"
+#include "LfoManager.h"
 #include "TremoloManager.h"
 #include "PitchShifterManager.h"
 
@@ -76,6 +76,7 @@ private:
     std::atomic<float>* depthParameter = nullptr;
     std::atomic<float>* spreadParameter = nullptr;
     std::atomic<float>* octavesParameter = nullptr;
+    std::atomic<float>* tempoParameter = nullptr;
     
     std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
@@ -84,6 +85,8 @@ private:
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersRight;
     std::array<TremoloManager, MAX_DELAY_LINES> tremoloManagers;
     std::array<PitchShifterManager, MAX_DELAY_LINES> pitchShifterManagers;
+    
+    float mapTempoValueToNoteDuration(float tempoValue) const;
 
     juce::SmoothedValue<float> smoothedDelayLines;
     int previousDelayLinesValue = 1;

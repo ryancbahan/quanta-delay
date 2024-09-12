@@ -31,6 +31,7 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     depthParameter = parameters.getRawParameterValue("depth");
     spreadParameter = parameters.getRawParameterValue("spread");
     octavesParameter = parameters.getRawParameterValue("octaves");
+    tempoParameter = parameters.getRawParameterValue("tempo");
 
 
 
@@ -79,6 +80,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     
     params.push_back(std::make_unique<juce::AudioParameterInt>(
             juce::ParameterID("octaves", 7), "Octaves", 1, MAX_DELAY_LINES, 1));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("tempo", 8), "Tempo",
+        juce::NormalisableRange<float>(0.0f, 6.0f, 1.0f), 0.0f)); 
+
     
     return { params.begin(), params.end() };
     
@@ -218,6 +224,22 @@ bool QuantadelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
   #endif
 }
 #endif
+
+float QuantadelayAudioProcessor::mapTempoValueToNoteDuration(float tempoValue) const
+{
+    const float noteDurations[] = {1.0f, 0.5f, 0.25f, 0.125f, 0.0625f, 0.03125f, 0.015625f}; // 1/1 to 1/64
+    // Ensure tempoValue is within the expected range
+    tempoValue = juce::jlimit(0.0f, 6.0f, tempoValue);
+    
+    // Convert the tempoValue to an index for the noteDurations array
+    int index = static_cast<int>(tempoValue);
+    
+    // Ensure index is within bounds
+    index = juce::jlimit(0, 6, index);
+    
+    // Return the note duration
+    return noteDurations[index];
+}
 
 void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
