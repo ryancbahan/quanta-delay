@@ -8,25 +8,27 @@ const std::array<float, LFOManager::NUM_PRESET_FREQUENCIES> LFOManager::presetFr
 LFOManager::LFOManager()
     : depth(0.0f)
     , sampleRate(44100.0f)
+    , phase(0.0f)
+    , frequency(1.0f)
+    , lastSample(0.0f)
 {
-    lfo.initialise([](float x) { return std::sin(x); });
 }
 
 void LFOManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
     reset();
-    lfo.prepare(spec);
 }
 
 void LFOManager::reset()
 {
-    lfo.reset();
+    phase = 0.0f;
+    lastSample = 0.0f;
 }
 
 void LFOManager::setRate(float rateHz)
 {
-    lfo.setFrequency(juce::jmax(0.01f, rateHz)); // Ensure rate is always positive
+    frequency = juce::jmax(0.01f, rateHz); // Ensure rate is always positive
 }
 
 void LFOManager::setDepth(float depthMs)
@@ -36,7 +38,22 @@ void LFOManager::setDepth(float depthMs)
 
 float LFOManager::getNextSample()
 {
-    return (lfo.processSample(0.0f) * 0.5f + 0.5f) * depth;
+    float sineComponent = std::sin(phase);
+    float triangleComponent = 1.0f - std::abs(phase / juce::MathConstants<float>::pi - 1.0f);
+    
+    // Mix sine and triangle for asymmetry
+    float asymmetricalWave = 0.9f * sineComponent + 0.1f * triangleComponent;
+    
+    // Apply low-pass filter for "lag" (simple one-pole filter)
+    asymmetricalWave = 0.99f * lastSample + 0.01f * asymmetricalWave;
+    lastSample = asymmetricalWave;
+
+    phase += 2.0f * juce::MathConstants<float>::pi * frequency / sampleRate;
+    if (phase >= 2.0f * juce::MathConstants<float>::pi)
+        phase -= 2.0f * juce::MathConstants<float>::pi;
+
+    // Scale and offset the wave to the 0-1 range, then apply depth
+    return ((asymmetricalWave * 0.5f + 0.5f) * depth);
 }
 
 void LFOManager::calculateAndSetRate(int index)
