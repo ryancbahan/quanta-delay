@@ -1,12 +1,12 @@
 #include "CustomLookAndFeel.h"
 
-// Constructor definition (you can add custom initialization if needed)
 CustomLookAndFeel::CustomLookAndFeel()
 {
-    // Custom initialization code, e.g., set colors if needed
+    generateNoiseTexture();
 }
 
-// Implement the overridden drawRotarySlider method
+CustomLookAndFeel::~CustomLookAndFeel() = default;
+
 void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
                                          float sliderPosProportional, float rotaryStartAngle,
                                          float rotaryEndAngle, juce::Slider& slider)
@@ -74,3 +74,41 @@ void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     g.fillEllipse(bounds.reduced(radius * 0.35f).translated(0, -radius * 0.1f));
 }
 
+void CustomLookAndFeel::drawBackground(juce::Graphics& g, int width, int height)
+{
+    auto bounds = juce::Rectangle<float>(0, 0, width, height);
+    
+    // Create a gradient for the background
+    juce::ColourGradient gradient(juce::Colour(45, 45, 50), bounds.getTopLeft(),
+                                  juce::Colour(30, 30, 35), bounds.getBottomRight(),
+                                  false);
+    g.setGradientFill(gradient);
+    g.fillAll();
+
+    // Apply the noise texture
+    g.setTiledImageFill(noiseTexture, 0, 0, 0.2f);
+    g.fillAll();
+
+    // Add a subtle vignette effect
+    juce::ColourGradient vignette(juce::Colours::black.withAlpha(0.3f), bounds.getCentre(),
+                                  juce::Colours::transparentBlack, bounds.getTopLeft(),
+                                  true);
+    g.setGradientFill(vignette);
+    g.fillAll();
+}
+
+void CustomLookAndFeel::generateNoiseTexture()
+{
+    const int size = 256;
+    noiseTexture = juce::Image(juce::Image::ARGB, size, size, true);
+
+    juce::Random random;
+    for (int y = 0; y < size; ++y)
+    {
+        for (int x = 0; x < size; ++x)
+        {
+            float noise = random.nextFloat() * 0.2f;
+            noiseTexture.setPixelAt(x, y, juce::Colour(noise, noise, noise, 1.0f));
+        }
+    }
+}

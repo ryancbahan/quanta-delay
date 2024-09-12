@@ -12,6 +12,7 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     
     // Initialize the custom look-and-feel object
     customLookAndFeel = std::make_unique<CustomLookAndFeel>();
+    setLookAndFeel(customLookAndFeel.get());
 
     auto& params = processor.getParameters();
 
@@ -49,6 +50,7 @@ QuantadelayAudioProcessorEditor::~QuantadelayAudioProcessorEditor()
     depthParamSlider.setLookAndFeel(nullptr);
     spreadParamSlider.setLookAndFeel(nullptr);
     octavesParamSlider.setLookAndFeel(nullptr);
+    setLookAndFeel(nullptr);
 }
 
 //==============================================================================
@@ -56,7 +58,7 @@ QuantadelayAudioProcessorEditor::~QuantadelayAudioProcessorEditor()
 void QuantadelayAudioProcessorEditor::paint (juce::Graphics& g)
 {
     // Fill the background
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    customLookAndFeel->drawBackground(g, getWidth(), getHeight());
 
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
