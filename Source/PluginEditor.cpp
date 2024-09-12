@@ -70,13 +70,13 @@ void QuantadelayAudioProcessorEditor::paint (juce::Graphics& g)
 // Resized method
 void QuantadelayAudioProcessorEditor::resized()
 {
-    // ... existing code for other UI elements ...
+    // ... (existing code for knobs)
 
-    int sliderLeft = 120;
-    int sliderWidth = getWidth() - sliderLeft - 10;
-    int sliderHeight = 20;
+    int sliderLeft = 20;
+    int sliderWidth = getWidth() - 40;
+    int sliderHeight = 30;
     
-    lowPassFreqSlider.setBounds(sliderLeft, getHeight() - 60, sliderWidth, sliderHeight);
+    lowPassFreqSlider.setBounds(sliderLeft, getHeight() - 70, sliderWidth, sliderHeight);
     highPassFreqSlider.setBounds(sliderLeft, getHeight() - 30, sliderWidth, sliderHeight);
 }
 
@@ -117,13 +117,9 @@ void QuantadelayAudioProcessorEditor::setupSlider(juce::Slider& slider, juce::Au
                                                   const juce::String& parameterID, const juce::String& labelText)
 {
     slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
-    slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 20);
+    slider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);  // Corrected line
+    slider.setLookAndFeel(customLookAndFeel.get());
     addAndMakeVisible(slider);
-
-    auto* label = new juce::Label();
-    label->setText(labelText, juce::NotificationType::dontSendNotification);
-    label->attachToComponent(&slider, true);
-    addAndMakeVisible(label);
 
     auto* attachment = new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, parameterID, slider);
     if (parameterID == "lowPassFreq")

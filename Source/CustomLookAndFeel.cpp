@@ -7,6 +7,48 @@ CustomLookAndFeel::CustomLookAndFeel()
 
 CustomLookAndFeel::~CustomLookAndFeel() = default;
 
+void CustomLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                      float sliderPos, float minSliderPos, float maxSliderPos,
+                      const juce::Slider::SliderStyle style, juce::Slider& slider)
+{
+    // Define colors
+    const juce::Colour backgroundColor(40, 40, 40);
+    const juce::Colour trackColor(60, 60, 60);
+    const juce::Colour thumbColor(255, 20, 147); // Cyberpunk pink
+
+    // Draw background
+    g.setColour(backgroundColor);
+    g.fillRect(x, y, width, height);
+
+    // Draw track
+    g.setColour(trackColor);
+    if (style == juce::Slider::LinearHorizontal)
+    {
+        g.fillRect(x, y + height / 2 - 2, width, 4);
+    }
+    else
+    {
+        g.fillRect(x + width / 2 - 2, y, 4, height);
+    }
+
+    // Draw thumb
+    const int thumbWidth = 16;
+    const int thumbHeight = height - 4;
+    const int thumbX = static_cast<int>(sliderPos) - thumbWidth / 2;
+    
+    juce::Path thumbPath;
+    thumbPath.addRoundedRectangle(thumbX, y + 2, thumbWidth, thumbHeight, 3.0f);
+
+    g.setGradientFill(juce::ColourGradient(thumbColor.brighter(0.2f), thumbX, y + 2,
+                                           thumbColor.darker(0.2f), thumbX, y + thumbHeight,
+                                           false));
+    g.fillPath(thumbPath);
+
+    // Add a subtle highlight
+    g.setColour(juce::Colours::white.withAlpha(0.2f));
+    g.drawRoundedRectangle(thumbX, y + 2, thumbWidth, thumbHeight, 3.0f, 1.0f);
+}
+
 void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
                                          float sliderPosProportional, float rotaryStartAngle,
                                          float rotaryEndAngle, juce::Slider& slider)
