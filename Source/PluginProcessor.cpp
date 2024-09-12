@@ -31,6 +31,8 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     depthParameter = parameters.getRawParameterValue("depth");
     spreadParameter = parameters.getRawParameterValue("spread");
     octavesParameter = parameters.getRawParameterValue("octaves");
+    lowPassFreqParameter = parameters.getRawParameterValue("lowPassFreq");
+    highPassFreqParameter = parameters.getRawParameterValue("highPassFreq");
 
     highPassFilter.setType(FilterManager::FilterType::HighPass);
     highPassFilter.setFrequency(500.0f);  // 500 Hz
@@ -88,6 +90,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     
     params.push_back(std::make_unique<juce::AudioParameterInt>(
             juce::ParameterID("octaves", 7), "Octaves", 1, MAX_DELAY_LINES, 1));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("lowPassFreq", 8), "Low Pass Freq",
+        juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("highPassFreq", 9), "High Pass Freq",
+        juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.3f), 20.0f));
     
     return { params.begin(), params.end() };
     
@@ -255,6 +265,12 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float depthValue = depthParameter->load();
     float spreadValue = spreadParameter->load();
     float octavesValue = octavesParameter->load();
+    float lowPassFreq = lowPassFreqParameter->load();
+    float highPassFreq = highPassFreqParameter->load();
+    
+    lowPassFilter.setFrequency(lowPassFreq);
+    highPassFilter.setFrequency(highPassFreq);
+
     
     int targetDelayLines = static_cast<int>(std::round(delayLinesParameter->load()));
     targetDelayLines = juce::jlimit(1, MAX_DELAY_LINES, targetDelayLines);
