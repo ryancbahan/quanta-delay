@@ -16,27 +16,28 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
 
     auto& params = processor.getParameters();
 
-    // Setup the knobs and apply the custom look-and-feel
-    setupKnob(mixParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(0)), 0, 0, 100, 100);
+    // Setup the knobs with labels and apply the custom look-and-feel
+    setupKnob(mixParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(0)), 0, 12, 100, 100, "Mix");
     mixParamSlider.setLookAndFeel(customLookAndFeel.get());  // Apply custom look-and-feel
 
-    setupKnob(delayTimeParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(1)), 100, 0, 100, 100);
+    setupKnob(delayTimeParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(1)), 100, 12, 100, 100, "Delay Time");
     delayTimeParamSlider.setLookAndFeel(customLookAndFeel.get());
 
-    setupKnob(feedbackParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(2)), 200, 0, 100, 100);
+    setupKnob(feedbackParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(2)), 200, 12, 100, 100, "Feedback");
     feedbackParamSlider.setLookAndFeel(customLookAndFeel.get());
 
-    setupKnob(delayLinesParamSlider, static_cast<juce::AudioParameterInt*>(params.getUnchecked(3)), 300, 100, 100, 100);
+    setupKnob(delayLinesParamSlider, static_cast<juce::AudioParameterInt*>(params.getUnchecked(3)), 300, 150, 100, 100, "Delay Lines");
     delayLinesParamSlider.setLookAndFeel(customLookAndFeel.get());
 
-    setupKnob(depthParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(4)), 300, 0, 100, 100);
+    setupKnob(depthParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(4)), 300, 12, 100, 100, "Depth");
     depthParamSlider.setLookAndFeel(customLookAndFeel.get());
 
-    setupKnob(spreadParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(5)), 200, 100, 100, 100);
+    setupKnob(spreadParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(5)), 200, 150, 100, 100, "Spread");
     spreadParamSlider.setLookAndFeel(customLookAndFeel.get());
 
-    setupKnob(octavesParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(6)), 200, 200, 100, 100);
+    setupKnob(octavesParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(6)), 0, 150, 100, 100, "Octaves");
     octavesParamSlider.setLookAndFeel(customLookAndFeel.get());
+
 }
 
 // Destructor
@@ -73,7 +74,7 @@ void QuantadelayAudioProcessorEditor::resized()
 //==============================================================================
 // Setup knob helper function
 void QuantadelayAudioProcessorEditor::setupKnob(juce::Slider& slider, juce::RangedAudioParameter* parameter,
-               int x, int y, int width, int height)
+               int x, int y, int width, int height, const juce::String& labelText)
 {
     slider.setBounds(x, y, width, height);
     slider.setSliderStyle(juce::Slider::SliderStyle::RotaryVerticalDrag);
@@ -93,4 +94,12 @@ void QuantadelayAudioProcessorEditor::setupKnob(juce::Slider& slider, juce::Rang
     slider.onDragEnd = [parameter] {
         parameter->endChangeGesture();
     };
+    
+    auto* label = new juce::Label();
+    label->setText(labelText, juce::NotificationType::dontSendNotification);
+    label->attachToComponent(&slider, false);
+    label->setJustificationType(juce::Justification::centred);
+    label->setBounds(x, y + height + 5, width, 20); // Position label below the slider
+
+    addAndMakeVisible(*label);
 }
