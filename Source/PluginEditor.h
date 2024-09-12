@@ -26,7 +26,7 @@ private:
     juce::Slider octavesParamSlider;
 
     void setupKnob(juce::Slider& slider, juce::RangedAudioParameter* parameter,
-                   int x, int y, int width, int height);
+                   int x, int y, int width, int height, const juce::String& labelText);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessorEditor)
 };
