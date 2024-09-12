@@ -1,67 +1,52 @@
 #include "PitchShifterManager.h"
 
 PitchShifterManager::PitchShifterManager()
-    : shiftFactor(2.0f)  // Default to octave up
+    : writePos(0)
     , readPos(0.0f)
-    , sampleRate(44100.0)
+    , shiftFactor(1.0f)
+    , bufferSize(44100)
 {
+    buffer.setSize(1, bufferSize);
+    buffer.clear();
 }
 
 void PitchShifterManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
-    sampleRate = spec.sampleRate;
     reset();
-    
-    delayLine.prepare(spec);
-    delayLine.setMaximumDelayInSamples(MAX_DELAY_SAMPLES);
 }
 
 void PitchShifterManager::reset()
 {
-    delayLine.reset();
+    writePos = 0;
     readPos = 0.0f;
+    buffer.clear();
 }
 
 void PitchShifterManager::setShiftFactor(float newShiftFactor)
 {
-    smoothedShiftFactor.setTargetValue(newShiftFactor);
+    shiftFactor = newShiftFactor;
 }
 
-void PitchShifterManager::process(float& leftSample, float& rightSample)
+void PitchShifterManager::process(float& sample)
 {
-    leftSample = processSample(leftSample);
-    rightSample = processSample(rightSample);
-}
+    // Write the input sample to the buffer
+    buffer.setSample(0, writePos, sample);
+    writePos = (writePos + 1) % bufferSize;
 
-float PitchShifterManager::processSample(float inputSample)
-{
-    float currentShiftFactor = smoothedShiftFactor.getNextValue();
-    
-    if (currentShiftFactor == 1.0f) {
-        return inputSample;
-    }
-    
-    delayLine.pushSample(0, inputSample);
-    
-    float readIncrement = 1.0f / currentShiftFactor;
-    
-    float pitchShiftedSample = 0.0f;
-    int numSamplesToRead = static_cast<int>(std::ceil(std::max(currentShiftFactor, 1.0f / currentShiftFactor)));
-    
-    for (int i = 0; i < numSamplesToRead; ++i)
-    {
-        float fractionalDelay = readPos + i * readIncrement;
-        fractionalDelay = std::fmod(fractionalDelay + MAX_DELAY_SAMPLES, static_cast<float>(MAX_DELAY_SAMPLES));
-        
-        float sample = delayLine.popSample(0, fractionalDelay);
-        
-        float windowWeight = 0.5f * (1.0f - std::cos(2.0f * juce::MathConstants<float>::pi * i / numSamplesToRead));
-        pitchShiftedSample += sample * windowWeight;
-    }
-        
-    readPos += readIncrement;
-    if (readPos >= MAX_DELAY_SAMPLES)
-        readPos -= MAX_DELAY_SAMPLES;
-    
-    return pitchShiftedSample;
+    // Read from the buffer with the pitch shift
+    float* channelData = buffer.getWritePointer(0);
+    int readPos1 = static_cast<int>(readPos) % bufferSize;
+    int readPos2 = (readPos1 + 1) % bufferSize;
+    float frac = readPos - std::floor(readPos);
+
+    // Linear interpolation
+    float out = channelData[readPos1] * (1.0f - frac) + channelData[readPos2] * frac;
+
+    // Update read position
+    readPos += shiftFactor;
+    if (readPos >= bufferSize)
+        readPos -= bufferSize;
+
+    // Output the pitch-shifted sample
+    sample = out;
 }

@@ -14,18 +14,17 @@ public:
     void setShiftFactor(float newShiftFactor);
     float getShiftFactor() const { return shiftFactor; }
     
-    void process(float& leftSample, float& rightSample);
+    void process(float& sample);
 
 private:
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
-    juce::SmoothedValue<float> smoothedShiftFactor;
+    juce::AudioBuffer<float> buffer;
+    int writePos;
+    float readPos;
+    float shiftFactor;
+    int bufferSize;
 
-    float shiftFactor = 1.0f;
-    float readPos = 0.0f;
+    juce::SmoothedValue<float> smoothedShiftFactor;
     double sampleRate;
-    static constexpr int MAX_DELAY_SAMPLES = 88200;
-    
-    float processSample(float inputSample);
-    
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PitchShifterManager)
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PitchShifterManager)
 };
