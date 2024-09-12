@@ -38,10 +38,10 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
         delayManagersRight[i].reset();
     }
     
-    for (auto& pitchShifter : pitchShifterManagers)
-    {
-        pitchShifter.setShiftFactor(2.0f);  // Default to octave up
-    }
+//    for (auto& pitchShifter : pitchShifterManagers)
+//    {
+//        pitchShifter.setShiftFactor(2.0f);  // Default to octave up
+//    }
 }
 
 QuantadelayAudioProcessor::~QuantadelayAudioProcessor()
@@ -173,10 +173,10 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
     }
     
-    for (auto& pitchShifter : pitchShifterManagers)
-    {
-        pitchShifter.prepare(spec);
-    }
+//    for (auto& pitchShifter : pitchShifterManagers)
+//    {
+//        pitchShifter.prepare(spec);
+//    }
 
     smoothedDelayLines.reset(sampleRate, 0.05);
     smoothedDelayLines.setCurrentAndTargetValue(1.0f);
@@ -287,7 +287,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-            pitchShifterManagers[i].process(leftOutput, rightOutput);
+//            pitchShifterManagers[i].process(leftOutput, rightOutput);
             tremoloManagers[i].process(leftOutput, rightOutput);
             stereoManagers[i].process(leftOutput, rightOutput);
             
