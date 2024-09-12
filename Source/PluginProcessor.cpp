@@ -38,10 +38,10 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
         delayManagersRight[i].reset();
     }
     
-//    for (auto& pitchShifter : pitchShifterManagers)
-//    {
-//        pitchShifter.setShiftFactor(2.0f);  // Default to octave up
-//    }
+    for (auto& pitchShifter : pitchShifterManagers)
+    {
+        pitchShifter.setShiftFactor(1.0f);
+    }
 }
 
 QuantadelayAudioProcessor::~QuantadelayAudioProcessor()
@@ -173,10 +173,10 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
     }
     
-//    for (auto& pitchShifter : pitchShifterManagers)
-//    {
-//        pitchShifter.prepare(spec);
-//    }
+    for (auto& pitchShifter : pitchShifterManagers)
+    {
+        pitchShifter.prepare(spec);
+    }
 
     smoothedDelayLines.reset(sampleRate, 0.05);
     smoothedDelayLines.setCurrentAndTargetValue(1.0f);
@@ -287,7 +287,21 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-//            pitchShifterManagers[i].process(leftOutput, rightOutput);
+            if (i == 0) {
+                // First delay line remains unshifted
+                pitchShifterManagers[i].setShiftFactor(1.0f);
+            } else if (i % 4 == 1) {
+                // Every 4th line (1, 5, 9, ...) is shifted up an octave
+                pitchShifterManagers[i].setShiftFactor(2.0f);
+            } else if (i % 2 == 1) {
+                // Other odd lines (3, 7, 11, ...) are shifted down an octave
+                pitchShifterManagers[i].setShiftFactor(0.75f);
+            } else {
+                // Even lines (2, 4, 6, 8, ...) are unshifted
+                pitchShifterManagers[i].setShiftFactor(1.0f);
+            }
+            
+            pitchShifterManagers[i].process(leftOutput, rightOutput);
             tremoloManagers[i].process(leftOutput, rightOutput);
             stereoManagers[i].process(leftOutput, rightOutput);
             

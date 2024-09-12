@@ -35,29 +35,31 @@ void PitchShifterManager::process(float& leftSample, float& rightSample)
 
 float PitchShifterManager::processSample(float inputSample)
 {
+    if (shiftFactor == 1 ) {
+        return inputSample;
+    }
+    
     delayLine.pushSample(0, inputSample);
     
     float readIncrement = 1.0f / shiftFactor;
     
     float pitchShiftedSample = 0.0f;
-    int numSamplesToRead = static_cast<int>(std::ceil(shiftFactor));
+    int numSamplesToRead = static_cast<int>(std::ceil(std::max(shiftFactor, 1.0f / shiftFactor)));
     
     for (int i = 0; i < numSamplesToRead; ++i)
     {
         float fractionalDelay = readPos + i * readIncrement;
-        fractionalDelay = std::fmod(fractionalDelay, static_cast<float>(MAX_DELAY_SAMPLES));
+        fractionalDelay = std::fmod(fractionalDelay + MAX_DELAY_SAMPLES, static_cast<float>(MAX_DELAY_SAMPLES));
         
         float sample = delayLine.popSample(0, fractionalDelay);
         
         float windowWeight = 0.5f * (1.0f - std::cos(2.0f * juce::MathConstants<float>::pi * i / numSamplesToRead));
         pitchShiftedSample += sample * windowWeight;
     }
-    
-    pitchShiftedSample /= numSamplesToRead;  // Normalize
-    
-    readPos += 1.0f;
-    if (readPos >= shiftFactor)
-        readPos -= shiftFactor;
+        
+    readPos += readIncrement;
+    if (readPos >= MAX_DELAY_SAMPLES)
+        readPos -= MAX_DELAY_SAMPLES;
     
     return pitchShiftedSample;
 }
