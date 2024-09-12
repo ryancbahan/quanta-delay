@@ -32,6 +32,15 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     spreadParameter = parameters.getRawParameterValue("spread");
     octavesParameter = parameters.getRawParameterValue("octaves");
 
+    highPassFilter.setType(FilterManager::FilterType::HighPass);
+    highPassFilter.setFrequency(500.0f);  // 500 Hz
+    highPassFilter.setQ(0.707f);  // Butterworth response
+    highPassFilter.setSlope(1.0f);  // 12 dB/octave
+
+    lowPassFilter.setType(FilterManager::FilterType::LowPass);
+    lowPassFilter.setFrequency(2000.0f);  // 2000 Hz
+    lowPassFilter.setQ(0.707f);  // Butterworth response
+    lowPassFilter.setSlope(1.0f);  // 12 dB/octave
 
 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
@@ -154,6 +163,9 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = static_cast<juce::uint32> (samplesPerBlock);
     spec.numChannels = getTotalNumOutputChannels();
+    
+    highPassFilter.prepare(spec);
+    lowPassFilter.prepare(spec);
 
     float initialDelayTime = *delayTimeParameter;
 
@@ -191,6 +203,9 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
 void QuantadelayAudioProcessor::releaseResources()
 {
+    highPassFilter.reset();
+    lowPassFilter.reset();
+    
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
         lfoManagersLeft[i].reset();
@@ -313,6 +328,11 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
+            
+            leftOutput = highPassFilter.processSample(leftOutput);
+            leftOutput = lowPassFilter.processSample(leftOutput);
+            rightOutput = highPassFilter.processSample(rightOutput);
+            rightOutput = lowPassFilter.processSample(rightOutput);
             
             if (i < octavesValue) {
                 pitchShifterManagers[i].process(leftOutput);

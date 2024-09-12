@@ -19,6 +19,9 @@
     <FILE id="sYxbhP" name="DelayManager.cpp" compile="1" resource="0"
           file="Source/DelayManager.cpp"/>
     <FILE id="aNWT9i" name="DelayManager.h" compile="0" resource="0" file="Source/DelayManager.h"/>
+    <FILE id="IeV5Q8" name="FilterManager.cpp" compile="1" resource="0"
+          file="Source/FilterManager.cpp"/>
+    <FILE id="q56Fo6" name="FilterManager.h" compile="0" resource="0" file="Source/FilterManager.h"/>
     <FILE id="Qwdb1E" name="LfoManager.cpp" compile="1" resource="0" file="Source/LfoManager.cpp"/>
     <FILE id="AxQbDp" name="LfoManager.h" compile="0" resource="0" file="Source/LfoManager.h"/>
     <FILE id="j29jfU" name="PitchShifterManager.cpp" compile="1" resource="0"

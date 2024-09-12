@@ -16,6 +16,7 @@
 #include "LFOManager.h"
 #include "TremoloManager.h"
 #include "PitchShifterManager.h"
+#include "FilterManager.h"
 
 
 
@@ -84,6 +85,9 @@ private:
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersRight;
     std::array<TremoloManager, MAX_DELAY_LINES> tremoloManagers;
     std::array<PitchShifterManager, MAX_DELAY_LINES> pitchShifterManagers;
+    
+    FilterManager highPassFilter;
+    FilterManager lowPassFilter;
 
     juce::SmoothedValue<float> smoothedDelayLines;
     int previousDelayLinesValue = 1;
