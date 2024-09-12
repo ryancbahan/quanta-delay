@@ -156,6 +156,8 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
         stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
         
+        tremoloManagers[i].prepare(spec);
+        
         lfoManagersLeft[i].prepare(spec);
         lfoManagersRight[i].prepare(spec);
         lfoManagersLeft[i].setDepth(1.0f);
@@ -226,7 +228,6 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
         float currentDelayTime = delayTimeValue * std::pow(spreadValue, i);
-
         delayManagersLeft[i].setDelayTime(currentDelayTime);
         delayManagersRight[i].setDelayTime(currentDelayTime);
         delayManagersLeft[i].setFeedback(feedbackValue);
@@ -237,6 +238,11 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
         lfoManagersLeft[i].setDepth(depthValue);
         lfoManagersRight[i].setDepth(depthValue);
+        
+        const float tremRate = 0.25f / (spreadValue / 3);
+        const float tremDepth = 1.0f * (spreadValue / 5);
+        tremoloManagers[i].setDepth(tremDepth);
+        tremoloManagers[i].setRate(tremRate);
     }
 
     auto* leftChannel = buffer.getWritePointer(0);
@@ -270,25 +276,12 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
+            
+            tremoloManagers[i].process(leftOutput, rightOutput);
             stereoManagers[i].process(leftOutput, rightOutput);
             
-            const float tremRate = 0.25f / (spreadValue / 3);
-            const float tremDepth = 1.0f * (spreadValue / 5);
-            static float tremPhase = 0.0f;
-            const float tremPhaseInc = tremRate / getSampleRate();
-            
-            // Apply Harmonic Tremolo
-            float tremLfo = 0.5f + 0.5f * sinf(2.0f * M_PI * tremPhase);
-            float lowPass = leftOutput * (1.0f - (tremDepth) * (tremLfo * 3)) + rightOutput * (tremDepth * tremLfo);
-            
-            float highPass = leftOutput * (tremDepth * tremLfo) + rightOutput * (1.0f - tremDepth * tremLfo);
-            
-            wetSignalLeft += lowPass;
-            wetSignalRight += highPass;
-            
-            // Update tremolo phase
-            tremPhase += tremPhaseInc;
-            if (tremPhase >= 1.0f) tremPhase -= 1.0f;
+            wetSignalLeft += leftOutput;
+            wetSignalRight += rightOutput;
         }
 
         // Add partial contribution from the transitioning delay line
