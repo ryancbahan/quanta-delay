@@ -30,6 +30,8 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     delayLinesParameter = parameters.getRawParameterValue("delayLines");
     depthParameter = parameters.getRawParameterValue("depth");
     spreadParameter = parameters.getRawParameterValue("spread");
+    octavesParameter = parameters.getRawParameterValue("octaves");
+
 
 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
@@ -65,15 +67,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
         juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
     
     params.push_back(std::make_unique<juce::AudioParameterInt>(
-            juce::ParameterID("delayLines", 1), "Delay Lines", 1, 20, 1));
+            juce::ParameterID("delayLines", 4), "Delay Lines", 1, 20, 1));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("depth", 4), "Depth",
+        juce::ParameterID("depth", 5), "Depth",
         juce::NormalisableRange<float>(0.0f, 10.0f), 0.5f));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("spread", 5), "Spread",
+        juce::ParameterID("spread", 6), "Spread",
         juce::NormalisableRange<float>(0.5f, 0.99f), 0.875f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID("octaves", 7), "Octaves", 1, MAX_DELAY_LINES, 1));
     
     return { params.begin(), params.end() };
     
@@ -229,6 +234,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float feedbackValue = feedbackParameter->load();
     float depthValue = depthParameter->load();
     float spreadValue = spreadParameter->load();
+    float octavesValue = octavesParameter->load();
+    
     int targetDelayLines = static_cast<int>(std::round(delayLinesParameter->load()));
     targetDelayLines = juce::jlimit(1, MAX_DELAY_LINES, targetDelayLines);
 
@@ -254,6 +261,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         tremoloManagers[i].setDepth(tremDepth);
         tremoloManagers[i].setRate(tremRate);
         
+
         if (i == 0) {
             // First delay line remains unshifted
             pitchShifterManagers[i].setShiftFactor(1.0f);
@@ -267,6 +275,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             // Even lines (2, 4, 6, 8, ...) are unshifted
             pitchShifterManagers[i].setShiftFactor(1.0f);
         }
+
     }
 
     auto* leftChannel = buffer.getWritePointer(0);
@@ -301,7 +310,9 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-            pitchShifterManagers[i].process(leftOutput, rightOutput);
+            if (i < octavesValue) {
+                pitchShifterManagers[i].process(leftOutput, rightOutput);
+            }
             tremoloManagers[i].process(leftOutput, rightOutput);
             stereoManagers[i].process(leftOutput, rightOutput);
             
