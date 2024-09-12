@@ -159,6 +159,9 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
+        lfoManagersLeft[i].reset();
+        lfoManagersRight[i].reset();
+        
         float currentDelayTime = initialDelayTime * std::pow(0.66f, i);
         delayManagersLeft[i].prepare(spec, currentDelayTime);
         delayManagersRight[i].prepare(spec, currentDelayTime);
@@ -173,9 +176,8 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         lfoManagersLeft[i].setDepth(1.0f);
         lfoManagersRight[i].setDepth(1.0f);
         
-        float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
-        lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
-        lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
+        lfoManagersLeft[i].calculateAndSetRate(i);
+        lfoManagersRight[i].calculateAndSetRate(i);
     }
     
     for (auto& pitchShifter : pitchShifterManagers)
@@ -189,8 +191,11 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
 void QuantadelayAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        lfoManagersLeft[i].reset();
+        lfoManagersRight[i].reset();
+    }
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -250,9 +255,10 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         delayManagersLeft[i].setFeedback(feedbackValue);
         delayManagersRight[i].setFeedback(feedbackValue);
         
-        float normalizedPosition = static_cast<float>(i) / static_cast<float>(i);
-        lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
-        lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
+        float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
+        lfoManagersLeft[i].calculateAndSetRate(i);
+        lfoManagersRight[i].calculateAndSetRate(i);
+        
         lfoManagersLeft[i].setDepth(depthValue);
         lfoManagersRight[i].setDepth(depthValue);
         

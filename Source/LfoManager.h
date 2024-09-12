@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <array>
 
 class LFOManager
 {
@@ -15,9 +16,13 @@ public:
     
     float getNextSample();
 
-    void calculateAndSetRate(float normalizedPosition);
+    void calculateAndSetRate(int index);
+
+    static constexpr int NUM_PRESET_FREQUENCIES = 20;
 
 private:
+    static const std::array<float, NUM_PRESET_FREQUENCIES> presetFrequencies;
+
     juce::dsp::Oscillator<float> lfo;
     float depth;
     double sampleRate;
