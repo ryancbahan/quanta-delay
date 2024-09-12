@@ -308,7 +308,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-            if (i <= octavesValue) {
+            if (i < octavesValue) {
                 pitchShifterManagers[i].process(leftOutput);
                 pitchShifterManagers[i].process(rightOutput);
             }
