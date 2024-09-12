@@ -3,45 +3,82 @@
 LFOManager::LFOManager()
     : depth(0.0f)
     , sampleRate(44100.0f)
+    , rate(1.0f)
+    , x(0.5)
+    , r(3.9)
+    , sampleCounter(0)
+    , samplesPerCycle(44100)
+    , seed(12345)
+    , randomState(seed)
 {
-    lfo.initialise([](float x) { return std::sin(x); });
+    resetToInitialState();
 }
 
 void LFOManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
-    reset();
-    lfo.prepare(spec);
+    resetToInitialState();
 }
 
 void LFOManager::reset()
 {
-    lfo.reset();
+    resetToInitialState();
+}
+
+void LFOManager::resetToInitialState()
+{
+    x = 0.5;
+    r = 3.9;
+    sampleCounter = 0;
+    randomState = seed;
+    updateLogisticMapParameter();
 }
 
 void LFOManager::setRate(float rateHz)
 {
-    lfo.setFrequency(juce::jmax(0.01f, rateHz)); // Ensure rate is always positive
+    rate = juce::jmax(0.01f, rateHz);
+    samplesPerCycle = static_cast<int>(sampleRate / rate);
 }
 
 void LFOManager::setDepth(float depthMs)
 {
-    depth = depthMs / 1000.0f; // Convert ms to seconds
+    depth = depthMs / 1000.0f;
 }
 
 float LFOManager::getNextSample()
 {
-    return (lfo.processSample(0.0f) * 0.5f + 0.5f) * depth;
+    if (sampleCounter >= samplesPerCycle)
+    {
+        sampleCounter = 0;
+        updateLogisticMapParameter();
+    }
+    
+    x = r * x * (1.0f - x);
+    sampleCounter++;
+    
+    // Map x from [0, 1] to [-1, 1] and apply depth
+    return (2.0f * x - 1.0f) * depth;
 }
 
 void LFOManager::calculateAndSetRate(float normalizedPosition)
 {
-    float rate = mapToFrequencyRange(normalizedPosition);
-    setRate(rate);
+    float newRate = 0.2f + normalizedPosition * 9.8f;
+    setRate(juce::jmax(0.2f, newRate));
 }
 
-float LFOManager::mapToFrequencyRange(float input) const
+void LFOManager::updateLogisticMapParameter()
 {
-    // Map input from 0-1 to 0.2-10 Hz (1/5 Hz to 10 Hz)
-    return juce::jmax(0.2f, 0.2f + input * 9.8f);
+    r = 3.7f + (generateRandomFloat() * 0.3f);
+}
+
+float LFOManager::generateRandomFloat()
+{
+    randomState = randomState * 1664525 + 1013904223; // Linear congruential generator
+    return (randomState >> 8) / static_cast<float>(0xFFFFFF); // Return a value between 0 and 1
+}
+
+void LFOManager::setSeed(uint32_t newSeed)
+{
+    seed = newSeed;
+    resetToInitialState();
 }

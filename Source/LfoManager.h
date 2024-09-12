@@ -16,13 +16,24 @@ public:
     float getNextSample();
 
     void calculateAndSetRate(float normalizedPosition);
+    void setSeed(uint32_t newSeed);
 
 private:
-    juce::dsp::Oscillator<float> lfo;
     float depth;
     double sampleRate;
+    float rate;
     
-    float mapToFrequencyRange(float input) const;
+    // Variables for deterministic LFO
+    double x; // State variable for the logistic map
+    double r; // Parameter for the logistic map
+    int sampleCounter;
+    int samplesPerCycle;
+    uint32_t seed;
+    uint32_t randomState; // For our custom random number generator
+    
+    void resetToInitialState();
+    void updateLogisticMapParameter();
+    float generateRandomFloat(); // Custom random number generator
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LFOManager)
 };
