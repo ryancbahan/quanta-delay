@@ -15,6 +15,8 @@
 #include "StereoFieldManager.h"
 #include "LFOManager.h"
 #include "TremoloManager.h"
+#include "PitchShifterManager.h"
+
 
 
 #define MAX_DELAY_TIME 2
@@ -80,7 +82,8 @@ private:
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersLeft;
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersRight;
     std::array<TremoloManager, MAX_DELAY_LINES> tremoloManagers;
-    
+    std::array<PitchShifterManager, MAX_DELAY_LINES> pitchShifterManagers;
+
     juce::SmoothedValue<float> smoothedDelayLines;
     int previousDelayLinesValue = 1;
 
