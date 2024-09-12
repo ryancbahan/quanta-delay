@@ -17,6 +17,10 @@
     <FILE id="aNWT9i" name="DelayManager.h" compile="0" resource="0" file="Source/DelayManager.h"/>
     <FILE id="Qwdb1E" name="LfoManager.cpp" compile="1" resource="0" file="Source/LfoManager.cpp"/>
     <FILE id="AxQbDp" name="LfoManager.h" compile="0" resource="0" file="Source/LfoManager.h"/>
+    <FILE id="j29jfU" name="PitchShifterManager.cpp" compile="1" resource="0"
+          file="Source/PitchShifterManager.cpp"/>
+    <FILE id="tGNBsi" name="PitchShifterManager.h" compile="0" resource="0"
+          file="Source/PitchShifterManager.h"/>
     <FILE id="N2QItC" name="StereoFieldManager.cpp" compile="1" resource="0"
           file="Source/StereoFieldManager.cpp"/>
     <FILE id="KiMMmY" name="StereoFieldManager.h" compile="0" resource="0"
