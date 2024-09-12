@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <array>
 
 class LFOManager
 {
@@ -15,25 +16,18 @@ public:
     
     float getNextSample();
 
-    void calculateAndSetRate(float normalizedPosition);
-    void setSeed(uint32_t newSeed);
+    void calculateAndSetRate(int index);
+
+    static constexpr int NUM_PRESET_FREQUENCIES = 20;
 
 private:
+    static const std::array<float, NUM_PRESET_FREQUENCIES> presetFrequencies;
+
+    juce::dsp::Oscillator<float> lfo;
     float depth;
     double sampleRate;
-    float rate;
     
-    // Variables for deterministic LFO
-    double x; // State variable for the logistic map
-    double r; // Parameter for the logistic map
-    int sampleCounter;
-    int samplesPerCycle;
-    uint32_t seed;
-    uint32_t randomState; // For our custom random number generator
-    
-    void resetToInitialState();
-    void updateLogisticMapParameter();
-    float generateRandomFloat(); // Custom random number generator
+    float mapToFrequencyRange(float input) const;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LFOManager)
 };

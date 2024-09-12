@@ -176,9 +176,8 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         lfoManagersLeft[i].setDepth(1.0f);
         lfoManagersRight[i].setDepth(1.0f);
         
-        float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
-        lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
-        lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
+        lfoManagersLeft[i].calculateAndSetRate(i);
+        lfoManagersRight[i].calculateAndSetRate(i);
     }
     
     for (auto& pitchShifter : pitchShifterManagers)
@@ -256,9 +255,10 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         delayManagersLeft[i].setFeedback(feedbackValue);
         delayManagersRight[i].setFeedback(feedbackValue);
         
-        float normalizedPosition = static_cast<float>(i) / static_cast<float>(i);
-        lfoManagersLeft[i].calculateAndSetRate(normalizedPosition);
-        lfoManagersRight[i].calculateAndSetRate(normalizedPosition);
+        float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
+        lfoManagersLeft[i].calculateAndSetRate(i);
+        lfoManagersRight[i].calculateAndSetRate(i);
+        
         lfoManagersLeft[i].setDepth(depthValue);
         lfoManagersRight[i].setDepth(depthValue);
         

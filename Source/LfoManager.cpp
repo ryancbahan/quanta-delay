@@ -1,84 +1,59 @@
 #include "LFOManager.h"
 
+const std::array<float, LFOManager::NUM_PRESET_FREQUENCIES> LFOManager::presetFrequencies = {
+    0.1f, 3.0f, 0.2f, 4.0f, 0.3f, 5.0f, 0.4f, 6.0f, 0.5f, 7.0f,
+    0.6f, 8.0f, 0.7f, 9.0f, 0.8f, 10.0f, 0.9f, 11.0f, 1.0f, 12.0f
+};
+
 LFOManager::LFOManager()
     : depth(0.0f)
     , sampleRate(44100.0f)
-    , rate(1.0f)
-    , x(0.5)
-    , r(3.9)
-    , sampleCounter(0)
-    , samplesPerCycle(44100)
-    , seed(12345)
-    , randomState(seed)
 {
-    resetToInitialState();
+    lfo.initialise([](float x) { return std::sin(x); });
 }
 
 void LFOManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
-    resetToInitialState();
+    reset();
+    lfo.prepare(spec);
 }
 
 void LFOManager::reset()
 {
-    resetToInitialState();
-}
-
-void LFOManager::resetToInitialState()
-{
-    x = 0.5;
-    r = 3.9;
-    sampleCounter = 0;
-    randomState = seed;
-    updateLogisticMapParameter();
+    lfo.reset();
 }
 
 void LFOManager::setRate(float rateHz)
 {
-    rate = juce::jmax(0.01f, rateHz);
-    samplesPerCycle = static_cast<int>(sampleRate / rate);
+    lfo.setFrequency(juce::jmax(0.01f, rateHz)); // Ensure rate is always positive
 }
 
 void LFOManager::setDepth(float depthMs)
 {
-    depth = depthMs / 1000.0f;
+    depth = depthMs / 1000.0f; // Convert ms to seconds
 }
 
 float LFOManager::getNextSample()
 {
-    if (sampleCounter >= samplesPerCycle)
+    return (lfo.processSample(0.0f) * 0.5f + 0.5f) * depth;
+}
+
+void LFOManager::calculateAndSetRate(int index)
+{
+    if (index >= 0 && index < NUM_PRESET_FREQUENCIES)
     {
-        sampleCounter = 0;
-        updateLogisticMapParameter();
+        setRate(presetFrequencies[index]);
     }
-    
-    x = r * x * (1.0f - x);
-    sampleCounter++;
-    
-    // Map x from [0, 1] to [-1, 1] and apply depth
-    return (2.0f * x - 1.0f) * depth;
+    else
+    {
+        // Fallback to a default rate if the index is out of bounds
+        setRate(1.0f);
+    }
 }
 
-void LFOManager::calculateAndSetRate(float normalizedPosition)
+float LFOManager::mapToFrequencyRange(float input) const
 {
-    float newRate = 0.2f + normalizedPosition * 9.8f;
-    setRate(juce::jmax(0.2f, newRate));
-}
-
-void LFOManager::updateLogisticMapParameter()
-{
-    r = 3.7f + (generateRandomFloat() * 0.3f);
-}
-
-float LFOManager::generateRandomFloat()
-{
-    randomState = randomState * 1664525 + 1013904223; // Linear congruential generator
-    return (randomState >> 8) / static_cast<float>(0xFFFFFF); // Return a value between 0 and 1
-}
-
-void LFOManager::setSeed(uint32_t newSeed)
-{
-    seed = newSeed;
-    resetToInitialState();
+    // Map input from 0-1 to 0.1-12 Hz (matching our preset range)
+    return juce::jmap(input, 0.1f, 12.0f);
 }
