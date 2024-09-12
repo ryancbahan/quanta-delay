@@ -18,10 +18,12 @@ public:
 
 private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
+    juce::SmoothedValue<float> smoothedShiftFactor;
+
     float shiftFactor = 1.0f;
     float readPos = 0.0f;
     double sampleRate;
-    static constexpr int MAX_DELAY_SAMPLES = 4096;
+    static constexpr int MAX_DELAY_SAMPLES = 88200;
     
     float processSample(float inputSample);
     

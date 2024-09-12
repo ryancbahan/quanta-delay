@@ -253,6 +253,20 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         const float tremDepth = 1.0f * (spreadValue / 5);
         tremoloManagers[i].setDepth(tremDepth);
         tremoloManagers[i].setRate(tremRate);
+        
+        if (i == 0) {
+            // First delay line remains unshifted
+            pitchShifterManagers[i].setShiftFactor(1.0f);
+        } else if (i % 4 == 1) {
+            // Every 4th line (1, 5, 9, ...) is shifted up an octave
+            pitchShifterManagers[i].setShiftFactor(2.0f);
+        } else if (i % 2 == 1) {
+            // Other odd lines (3, 7, 11, ...) are shifted down an octave
+            pitchShifterManagers[i].setShiftFactor(0.75f);
+        } else {
+            // Even lines (2, 4, 6, 8, ...) are unshifted
+            pitchShifterManagers[i].setShiftFactor(1.0f);
+        }
     }
 
     auto* leftChannel = buffer.getWritePointer(0);
@@ -286,20 +300,6 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
-            
-            if (i == 0) {
-                // First delay line remains unshifted
-                pitchShifterManagers[i].setShiftFactor(1.0f);
-            } else if (i % 4 == 1) {
-                // Every 4th line (1, 5, 9, ...) is shifted up an octave
-                pitchShifterManagers[i].setShiftFactor(2.0f);
-            } else if (i % 2 == 1) {
-                // Other odd lines (3, 7, 11, ...) are shifted down an octave
-                pitchShifterManagers[i].setShiftFactor(0.75f);
-            } else {
-                // Even lines (2, 4, 6, 8, ...) are unshifted
-                pitchShifterManagers[i].setShiftFactor(1.0f);
-            }
             
             pitchShifterManagers[i].process(leftOutput, rightOutput);
             tremoloManagers[i].process(leftOutput, rightOutput);

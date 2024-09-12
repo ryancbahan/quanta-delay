@@ -24,7 +24,7 @@ void PitchShifterManager::reset()
 
 void PitchShifterManager::setShiftFactor(float newShiftFactor)
 {
-    shiftFactor = std::max(0.01f, std::abs(newShiftFactor));
+    smoothedShiftFactor.setTargetValue(newShiftFactor);
 }
 
 void PitchShifterManager::process(float& leftSample, float& rightSample)
@@ -35,16 +35,18 @@ void PitchShifterManager::process(float& leftSample, float& rightSample)
 
 float PitchShifterManager::processSample(float inputSample)
 {
-    if (shiftFactor == 1 ) {
+    float currentShiftFactor = smoothedShiftFactor.getNextValue();
+    
+    if (currentShiftFactor == 1.0f) {
         return inputSample;
     }
     
     delayLine.pushSample(0, inputSample);
     
-    float readIncrement = 1.0f / shiftFactor;
+    float readIncrement = 1.0f / currentShiftFactor;
     
     float pitchShiftedSample = 0.0f;
-    int numSamplesToRead = static_cast<int>(std::ceil(std::max(shiftFactor, 1.0f / shiftFactor)));
+    int numSamplesToRead = static_cast<int>(std::ceil(std::max(currentShiftFactor, 1.0f / currentShiftFactor)));
     
     for (int i = 0; i < numSamplesToRead; ++i)
     {
