@@ -7,6 +7,64 @@ CustomLookAndFeel::CustomLookAndFeel()
 
 CustomLookAndFeel::~CustomLookAndFeel() = default;
 
+void CustomLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                                         float sliderPos, float minSliderPos, float maxSliderPos,
+                                         const juce::Slider::SliderStyle style, juce::Slider& slider)
+{
+    // Define colors
+    const juce::Colour backgroundColor(30, 30, 40);
+    const juce::Colour trackColor(60, 60, 80);
+    const juce::Colour thumbColor(255, 20, 147); // Cyberpunk pink
+    const juce::Colour highlightColor(100, 100, 120);
+
+    // Draw background
+    g.setColour(backgroundColor);
+    g.fillRect(x, y, width, height);
+
+    // Draw track
+    int trackHeight = height / 3;
+    int trackY = y + (height - trackHeight) / 2;
+    juce::Rectangle<float> trackBounds(x + 2, trackY, width - 4, trackHeight);
+    
+    // Track shadow
+    g.setColour(juce::Colours::black.withAlpha(0.5f));
+    g.fillRoundedRectangle(trackBounds.translated(0, 1), 2.0f);
+    
+    // Track base
+    g.setColour(trackColor);
+    g.fillRoundedRectangle(trackBounds, 2.0f);
+    
+    // Track highlight
+    juce::ColourGradient trackGradient(highlightColor.withAlpha(0.3f), x, trackY,
+                                       highlightColor.withAlpha(0.1f), x, trackY + trackHeight,
+                                       false);
+    g.setGradientFill(trackGradient);
+    g.fillRoundedRectangle(trackBounds, 2.0f);
+
+    // Draw thumb
+    int thumbWidth = 10;
+    int thumbHeight = height * 0.8f;
+    int thumbX = static_cast<int>(sliderPos) - thumbWidth / 2;
+    int thumbY = y + (height - thumbHeight) / 2;
+
+    juce::Rectangle<float> thumbBounds(thumbX, thumbY, thumbWidth, thumbHeight);
+    
+    // Thumb shadow
+    g.setColour(juce::Colours::black.withAlpha(0.5f));
+    g.fillRoundedRectangle(thumbBounds.translated(1, 1), 2.0f);
+    
+    // Thumb base
+    g.setColour(thumbColor);
+    g.fillRoundedRectangle(thumbBounds, 2.0f);
+    
+    // Thumb highlight
+    juce::ColourGradient thumbGradient(juce::Colours::white.withAlpha(0.3f), thumbX, thumbY,
+                                       juce::Colours::white.withAlpha(0.1f), thumbX + thumbWidth, thumbY + thumbHeight,
+                                       false);
+    g.setGradientFill(thumbGradient);
+    g.fillRoundedRectangle(thumbBounds, 2.0f);
+}
+
 void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
                                          float sliderPosProportional, float rotaryStartAngle,
                                          float rotaryEndAngle, juce::Slider& slider)

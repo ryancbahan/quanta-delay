@@ -8,7 +8,7 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     // Make sure that before the constructor has finished, you've set the editor's size to whatever you need it to be.
-    setSize (400, 300);
+    setSize (400, 400);
     
     // Initialize the custom look-and-feel object
     customLookAndFeel = std::make_unique<CustomLookAndFeel>();
@@ -37,7 +37,9 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
 
     setupKnob(octavesParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(6)), 0, 150, 100, 100, "Octaves");
     octavesParamSlider.setLookAndFeel(customLookAndFeel.get());
-
+    
+    setupSlider(lowPassFreqSlider, audioProcessor.parameters, "lowPassFreq", "Low Pass");
+    setupSlider(highPassFreqSlider, audioProcessor.parameters, "highPassFreq", "High Pass");
 }
 
 // Destructor
@@ -68,7 +70,14 @@ void QuantadelayAudioProcessorEditor::paint (juce::Graphics& g)
 // Resized method
 void QuantadelayAudioProcessorEditor::resized()
 {
-    // This is where you'll layout the positions of your subcomponents
+    // ... (existing code for knobs)
+
+    int sliderLeft = 20;
+    int sliderWidth = getWidth() - 40;
+    int sliderHeight = 30;
+    
+    lowPassFreqSlider.setBounds(sliderLeft, getHeight() - 70, sliderWidth, sliderHeight);
+    highPassFreqSlider.setBounds(sliderLeft, getHeight() - 30, sliderWidth, sliderHeight);
 }
 
 //==============================================================================
@@ -102,4 +111,19 @@ void QuantadelayAudioProcessorEditor::setupKnob(juce::Slider& slider, juce::Rang
     label->setBounds(x, y + height + 5, width, 20); // Position label below the slider
 
     addAndMakeVisible(*label);
+}
+
+void QuantadelayAudioProcessorEditor::setupSlider(juce::Slider& slider, juce::AudioProcessorValueTreeState& apvts,
+                                                  const juce::String& parameterID, const juce::String& labelText)
+{
+    slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    slider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);  // Corrected line
+    slider.setLookAndFeel(customLookAndFeel.get());
+    addAndMakeVisible(slider);
+
+    auto* attachment = new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, parameterID, slider);
+    if (parameterID == "lowPassFreq")
+        lowPassFreqAttachment.reset(attachment);
+    else if (parameterID == "highPassFreq")
+        highPassFreqAttachment.reset(attachment);
 }

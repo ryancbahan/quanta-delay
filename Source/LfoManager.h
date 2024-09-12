@@ -26,6 +26,9 @@ private:
     juce::dsp::Oscillator<float> lfo;
     float depth;
     double sampleRate;
+    float phase;
+    float frequency;
+    float lastSample;
     
     float mapToFrequencyRange(float input) const;
     
