@@ -1,19 +1,15 @@
 #pragma once
-
 #include <JuceHeader.h>
 
 class PitchShifterManager
 {
 public:
     PitchShifterManager();
-    ~PitchShifterManager() = default;
 
     void prepare(const juce::dsp::ProcessSpec& spec);
     void reset();
-    
     void setShiftFactor(float newShiftFactor);
-    float getShiftFactor() const { return shiftFactor; }
-    
+    void setNoiseAmplitude(float amplitude); // Adjust noise amplitude
     void process(float& sample);
 
 private:
@@ -22,9 +18,12 @@ private:
     float readPos;
     float shiftFactor;
     int bufferSize;
+    float crossfadePos;
+    float crossfadeDuration;
+    float sampleRate;
+    float crossfadeIncrement;
+    float noiseAmplitude; // Amplitude of the noise
 
-    juce::SmoothedValue<float> smoothedShiftFactor;
-    double sampleRate;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PitchShifterManager)
+    void calculateCrossfadeIncrement();
+    float generateNoise() const; // Generate controlled noise
 };
