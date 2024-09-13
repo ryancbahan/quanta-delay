@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "CustomLookAndFeel.h"  // Include the custom look and feel
+#include "CustomLookAndFeel.h"
 
 class QuantadelayAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
@@ -15,7 +15,7 @@ public:
 
 private:
     QuantadelayAudioProcessor& audioProcessor;
-    std::unique_ptr<CustomLookAndFeel> customLookAndFeel;  // Member for custom look-and-feel
+    std::unique_ptr<CustomLookAndFeel> customLookAndFeel;
     
     juce::Slider mixParamSlider;
     juce::Slider feedbackParamSlider;

@@ -7,16 +7,14 @@
 QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    // Make sure that before the constructor has finished, you've set the editor's size to whatever you need it to be.
+
     setSize (400, 400);
     
-    // Initialize the custom look-and-feel object
     customLookAndFeel = std::make_unique<CustomLookAndFeel>();
     setLookAndFeel(customLookAndFeel.get());
 
     auto& params = processor.getParameters();
 
-    // Setup the knobs with labels and apply the custom look-and-feel
     setupKnob(mixParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(0)), 0, 12, 100, 100, "Mix");
     mixParamSlider.setLookAndFeel(customLookAndFeel.get());  // Apply custom look-and-feel
 
@@ -45,7 +43,6 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
 // Destructor
 QuantadelayAudioProcessorEditor::~QuantadelayAudioProcessorEditor()
 {
-    // It's important to reset the look-and-feel of the sliders back to nullptr before destruction
     mixParamSlider.setLookAndFeel(nullptr);
     delayTimeParamSlider.setLookAndFeel(nullptr);
     feedbackParamSlider.setLookAndFeel(nullptr);
@@ -60,9 +57,7 @@ QuantadelayAudioProcessorEditor::~QuantadelayAudioProcessorEditor()
 // Paint method
 void QuantadelayAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // Fill the background
     customLookAndFeel->drawBackground(g, getWidth(), getHeight());
-
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
 }
@@ -70,8 +65,6 @@ void QuantadelayAudioProcessorEditor::paint (juce::Graphics& g)
 // Resized method
 void QuantadelayAudioProcessorEditor::resized()
 {
-    // ... (existing code for knobs)
-
     int sliderLeft = 20;
     int sliderWidth = getWidth() - 40;
     int sliderHeight = 30;
@@ -81,7 +74,6 @@ void QuantadelayAudioProcessorEditor::resized()
 }
 
 //==============================================================================
-// Setup knob helper function
 void QuantadelayAudioProcessorEditor::setupKnob(juce::Slider& slider, juce::RangedAudioParameter* parameter,
                int x, int y, int width, int height, const juce::String& labelText)
 {
