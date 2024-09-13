@@ -4,7 +4,7 @@ PitchShifterManager::PitchShifterManager()
     : writePos(0)
     , readPos(0.0f)
     , shiftFactor(1.0f)
-    , bufferSize(44100)
+    , bufferSize(88200)
     , crossfadePos(0.0f)
     , crossfadeDuration(0.01f) // Default to 10ms
     , sampleRate(44100.0f) // Default sample rate
