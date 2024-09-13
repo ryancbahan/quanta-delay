@@ -30,12 +30,14 @@ private:
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lowPassFreqAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> highPassFreqAttachment;
+    
+    std::vector<std::unique_ptr<juce::Label>> sliderLabels;
 
     void setupKnob(juce::Slider& slider, juce::RangedAudioParameter* parameter,
-                   int x, int y, int width, int height, const juce::String& labelText);
-    
+                       int x, int y, int width, int height, const juce::String& labelText);
+        
     void setupSlider(juce::Slider& slider, juce::AudioProcessorValueTreeState& apvts,
-                        const juce::String& parameterID, const juce::String& labelText);
+                       const juce::String& parameterID, const juce::String& labelText);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (QuantadelayAudioProcessorEditor)
 };
