@@ -33,6 +33,19 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     octavesParameter = parameters.getRawParameterValue("octaves");
     lowPassFreqParameter = parameters.getRawParameterValue("lowPassFreq");
     highPassFreqParameter = parameters.getRawParameterValue("highPassFreq");
+    
+    highPassFilter.reset();
+    lowPassFilter.reset();
+    StereoFieldManager().reset();
+    PitchShifterManager().reset();
+
+    for (int i = 0; i < MAX_DELAY_LINES; ++i)
+    {
+        delayManagersLeft[i].reset();
+        delayManagersRight[i].reset();
+        lfoManagersLeft[i].reset();
+        lfoManagersRight[i].reset();
+    }
 
     highPassFilter.setType(FilterManager::FilterType::HighPass);
     highPassFilter.setFrequency(500.0f);  // 500 Hz
@@ -43,18 +56,6 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     lowPassFilter.setFrequency(2000.0f);  // 2000 Hz
     lowPassFilter.setQ(0.707f);  // Butterworth response
     lowPassFilter.setSlope(1.0f);  // 12 dB/octave
-
-
-    for (int i = 0; i < MAX_DELAY_LINES; ++i)
-    {
-        delayManagersLeft[i].reset();
-        delayManagersRight[i].reset();
-    }
-    
-//    for (auto& pitchShifter : pitchShifterManagers)
-//    {
-//        pitchShifter.setShiftFactor(0.5f);
-//    }
 }
 
 QuantadelayAudioProcessor::~QuantadelayAudioProcessor()
@@ -89,7 +90,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
         juce::NormalisableRange<float>(0.5f, 0.99f), 0.875f));
     
     params.push_back(std::make_unique<juce::AudioParameterInt>(
-            juce::ParameterID("octaves", 7), "Octaves", 1, MAX_DELAY_LINES, 1));
+            juce::ParameterID("octaves", 7), "Octaves", 1, 11, 1));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("lowPassFreq", 8), "Low Pass Freq",
@@ -99,7 +100,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
         juce::ParameterID("highPassFreq", 9), "High Pass Freq",
         juce::NormalisableRange<float>(20.0f, 2000.0f, 1.0f, 0.3f), 20.0f));
     
-    return { params.begin(), params.end() };
     
     return { params.begin(), params.end() };
 }
@@ -191,8 +191,6 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
         stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
         
-        tremoloManagers[i].prepare(spec);
-        
         lfoManagersLeft[i].prepare(spec);
         lfoManagersRight[i].prepare(spec);
         lfoManagersLeft[i].setDepth(1.0f);
@@ -213,11 +211,15 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
 void QuantadelayAudioProcessor::releaseResources()
 {
+    StereoFieldManager().reset();
+    PitchShifterManager().reset();
     highPassFilter.reset();
     lowPassFilter.reset();
-    
+
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
+        delayManagersLeft[i].reset();
+        delayManagersRight[i].reset();
         lfoManagersLeft[i].reset();
         lfoManagersRight[i].reset();
     }
@@ -255,10 +257,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
+    
     float mixValue = mixParameter->load();
     float delayTimeValue = delayTimeParameter->load();
     float feedbackValue = feedbackParameter->load();
@@ -267,25 +266,25 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float octavesValue = octavesParameter->load();
     float lowPassFreq = lowPassFreqParameter->load();
     float highPassFreq = highPassFreqParameter->load();
-    
+
     lowPassFilter.setFrequency(lowPassFreq);
     highPassFilter.setFrequency(highPassFreq);
 
-    
+
     int targetDelayLines = static_cast<int>(std::round(delayLinesParameter->load()));
     targetDelayLines = juce::jlimit(1, MAX_DELAY_LINES, targetDelayLines);
 
     smoothedDelayLines.setTargetValue(static_cast<float>(targetDelayLines));
+    
+    auto* leftChannel = buffer.getWritePointer(0);
+    auto* rightChannel = buffer.getWritePointer(1);
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
 
     // Update parameters for all delay lines
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
-        float currentDelayTime = delayTimeValue * std::pow(spreadValue, i);
-        delayManagersLeft[i].setDelayTime(currentDelayTime);
-        delayManagersRight[i].setDelayTime(currentDelayTime);
-        delayManagersLeft[i].setFeedback(feedbackValue);
-        delayManagersRight[i].setFeedback(feedbackValue);
-        
         float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
         lfoManagersLeft[i].calculateAndSetRate(i);
         lfoManagersRight[i].calculateAndSetRate(i);
@@ -293,10 +292,15 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         lfoManagersLeft[i].setDepth(depthValue);
         lfoManagersRight[i].setDepth(depthValue);
         
-        const float tremRate = 0.25f / (spreadValue / 3);
-        const float tremDepth = 1.0f * (spreadValue / 5);
-        tremoloManagers[i].setDepth(tremDepth);
-        tremoloManagers[i].setRate(tremRate);
+        float lfoValueLeft = lfoManagersLeft[i].getNextSample();
+        float lfoValueRight = lfoManagersRight[i].getNextSample();
+        float currentDelayTimeLeft = delayTimeValue * std::pow(spreadValue, i) + lfoValueLeft;
+        float currentDelayTimeRight = delayTimeValue * std::pow(spreadValue, i) + lfoValueRight;
+
+        delayManagersLeft[i].setDelayTime(currentDelayTimeLeft);
+        delayManagersRight[i].setDelayTime(currentDelayTimeRight);
+        delayManagersLeft[i].setFeedback(feedbackValue);
+        delayManagersRight[i].setFeedback(feedbackValue);
 
         if (i == 0) {
             // First delay line remains unshifted
@@ -313,8 +317,6 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         }
     }
 
-    auto* leftChannel = buffer.getWritePointer(0);
-    auto* rightChannel = buffer.getWritePointer(1);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
@@ -328,67 +330,30 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 
         for (int i = 0; i < fullDelayLines; ++i)
         {
-            float lfoValueLeft = lfoManagersLeft[i].getNextSample();
-            float lfoValueRight = lfoManagersRight[i].getNextSample();
-            
-            float currentDelayTimeLeft = delayTimeValue * std::pow(spreadValue, i) + lfoValueLeft;
-            float currentDelayTimeRight = delayTimeValue * std::pow(spreadValue, i) + lfoValueRight;
-
-            delayManagersLeft[i].setDelayTime(currentDelayTimeLeft);
-            delayManagersRight[i].setDelayTime(currentDelayTimeRight);
-            delayManagersLeft[i].setFeedback(feedbackValue);
-            delayManagersRight[i].setFeedback(feedbackValue);
-            
             float delayedSampleLeft = delayManagersLeft[i].processSample(inputSampleLeft);
             float delayedSampleRight = delayManagersRight[i].processSample(inputSampleRight);
             
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
-            leftOutput = highPassFilter.processSample(leftOutput);
-            rightOutput = highPassFilter.processSample(rightOutput);
-            leftOutput = lowPassFilter.processSample(leftOutput);
-            rightOutput = lowPassFilter.processSample(rightOutput);
             
-            if (i < octavesValue) {
+            if (i < octavesValue && i < fullDelayLines + 1) {
                 pitchShifterManagers[i].process(leftOutput);
                 pitchShifterManagers[i].process(rightOutput);
             }
-            tremoloManagers[i].process(leftOutput, rightOutput);
+
             stereoManagers[i].process(leftOutput, rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
         }
 
-        // Add partial contribution from the transitioning delay line
-        if (fullDelayLines < MAX_DELAY_LINES)
-        {
-            float fraction = currentDelayLines - fullDelayLines;
-            float lfoValueLeft = lfoManagersLeft[fullDelayLines].getNextSample();
-            float lfoValueRight = lfoManagersRight[fullDelayLines].getNextSample();
-            
-            float currentDelayTimeLeft = delayTimeValue * std::pow(spreadValue, fullDelayLines) + lfoValueLeft;
-            float currentDelayTimeRight = delayTimeValue * std::pow(spreadValue, fullDelayLines) + lfoValueRight;
+//         Scale the wet signal by the current (smoothed) number of delay lines
+        wetSignalLeft /= currentDelayLines;
+        wetSignalRight /= currentDelayLines;
+        
+        highPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
+        lowPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
 
-            delayManagersLeft[fullDelayLines].setDelayTime(currentDelayTimeLeft);
-            delayManagersRight[fullDelayLines].setDelayTime(currentDelayTimeRight);
-            
-            float delayedSampleLeft = delayManagersLeft[fullDelayLines].processSample(inputSampleLeft);
-            float delayedSampleRight = delayManagersRight[fullDelayLines].processSample(inputSampleRight);
-            
-            float leftOutput = delayedSampleLeft;
-            float rightOutput = delayedSampleRight;
-            stereoManagers[fullDelayLines].process(leftOutput, rightOutput);
-            
-            wetSignalLeft += fraction * leftOutput;
-            wetSignalRight += fraction * rightOutput;
-        }
-
-        // Scale the wet signal by the current (smoothed) number of delay lines
-//        wetSignalLeft /= currentDelayLines;
-//        wetSignalRight /= currentDelayLines;
-
-        // Combine dry and wet signals
         leftChannel[sample] = inputSampleLeft + mixValue * wetSignalLeft;
         rightChannel[sample] = inputSampleRight + mixValue * wetSignalRight;
     }

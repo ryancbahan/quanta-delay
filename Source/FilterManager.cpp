@@ -7,20 +7,24 @@ FilterManager::FilterManager()
     , q(0.707f)
     , sampleRate(44100.0)
 {
-    updateFilter();
+    updateFilters();
 }
 
 void FilterManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
     reset();
-    filter.prepare(spec);
-    updateFilter();
+    
+    filterLeft.prepare(spec);
+    filterRight.prepare(spec);
+    
+    updateFilters();
 }
 
 void FilterManager::reset()
 {
-    filter.reset();
+    filterLeft.reset();
+    filterRight.reset();
 }
 
 void FilterManager::setType(FilterType newType)
@@ -28,7 +32,7 @@ void FilterManager::setType(FilterType newType)
     if (currentType != newType)
     {
         currentType = newType;
-        updateFilter();
+        updateFilters();
     }
 }
 
@@ -37,7 +41,7 @@ void FilterManager::setFrequency(float newFrequency)
     if (frequency != newFrequency)
     {
         frequency = newFrequency;
-        updateFilter();
+        updateFilters();
     }
 }
 
@@ -46,7 +50,7 @@ void FilterManager::setSlope(float newSlope)
     if (slope != newSlope)
     {
         slope = newSlope;
-        updateFilter();
+        updateFilters();
     }
 }
 
@@ -55,35 +59,42 @@ void FilterManager::setQ(float newQ)
     if (q != newQ)
     {
         q = newQ;
-        updateFilter();
+        updateFilters();
     }
 }
 
-float FilterManager::processSample(float sample)
+void FilterManager::processStereoSample(float& leftSample, float& rightSample)
 {
-    return filter.processSample(0, sample);
+    leftSample = filterLeft.processSample(0, leftSample);
+    rightSample = filterRight.processSample(0, rightSample);
 }
 
-void FilterManager::updateFilter()
+void FilterManager::updateFilters()
 {
-    switch (currentType)
+    auto updateSingleFilter = [this](juce::dsp::StateVariableTPTFilter<float>& filter)
     {
-        case FilterType::LowPass:
-            filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-            break;
-        case FilterType::HighPass:
-            filter.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-            break;
-    }
+        switch (currentType)
+        {
+            case FilterType::LowPass:
+                filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+                break;
+            case FilterType::HighPass:
+                filter.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+                break;
+        }
 
-    filter.setCutoffFrequency(frequency);
-    filter.setResonance(q);
+        filter.setCutoffFrequency(frequency);
+        filter.setResonance(q);
 
-    // The StateVariableTPTFilter doesn't have a direct slope setting,
-    // so we'll adjust the order of the filter based on the slope
-    int order = static_cast<int>(slope);
-    for (int i = 1; i < order; ++i)
-    {
-        filter.snapToZero();
-    }
+        // The StateVariableTPTFilter doesn't have a direct slope setting,
+        // so we'll adjust the order of the filter based on the slope
+        int order = static_cast<int>(slope);
+        for (int i = 1; i < order; ++i)
+        {
+            filter.snapToZero();
+        }
+    };
+
+    updateSingleFilter(filterLeft);
+    updateSingleFilter(filterRight);
 }
