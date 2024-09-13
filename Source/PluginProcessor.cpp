@@ -341,13 +341,9 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         {
             float delayedSampleLeft = delayManagersLeft[i].processSample(inputSampleLeft);
             float delayedSampleRight = delayManagersRight[i].processSample(inputSampleRight);
-//            
+            
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
-//            leftOutput = highPassFilter.processSample(leftOutput);
-//            rightOutput = highPassFilter.processSample(rightOutput);
-//            leftOutput = lowPassFilter.processSample(leftOutput);
-//            rightOutput = lowPassFilter.processSample(rightOutput);
 //            
 //            if (i < octavesValue) {
 //                pitchShifterManagers[i].process(leftOutput);
@@ -387,6 +383,11 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 //         Scale the wet signal by the current (smoothed) number of delay lines
         wetSignalLeft /= currentDelayLines;
         wetSignalRight /= currentDelayLines;
+        
+        wetSignalLeft = highPassFilter.processSample(wetSignalLeft);
+        wetSignalRight = highPassFilter.processSample(wetSignalRight);
+        wetSignalLeft = lowPassFilter.processSample(wetSignalLeft);
+        wetSignalRight = lowPassFilter.processSample(wetSignalRight);
 
         leftChannel[sample] = inputSampleLeft + mixValue * wetSignalLeft;
         rightChannel[sample] = inputSampleRight + mixValue * wetSignalRight;
