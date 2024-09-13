@@ -9,6 +9,7 @@ public:
     void prepare(const juce::dsp::ProcessSpec& spec);
     void reset();
     void setShiftFactor(float newShiftFactor);
+    void setNoiseAmplitude(float amplitude); // Adjust noise amplitude
     void process(float& sample);
 
 private:
@@ -17,12 +18,12 @@ private:
     float readPos;
     float shiftFactor;
     int bufferSize;
-    
-    // Interpolation properties
     float crossfadePos;
-    float crossfadeIncrement;
     float crossfadeDuration;
     float sampleRate;
-    
-    void calculateCrossfadeIncrement(); // Helper to calculate crossfade increment based on sample rate
+    float crossfadeIncrement;
+    float noiseAmplitude; // Amplitude of the noise
+
+    void calculateCrossfadeIncrement();
+    float generateNoise() const; // Generate controlled noise
 };

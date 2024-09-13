@@ -1,4 +1,16 @@
 #include "PitchShifterManager.h"
+#include <cmath>
+
+// Cubic interpolation function
+float cubicInterpolate(float p0, float p1, float p2, float p3, float t)
+{
+    float a = (-p0 / 2.0f) + (3.0f * p1 / 2.0f) - (3.0f * p2 / 2.0f) + (p3 / 2.0f);
+    float b = p0 - (5.0f * p1 / 2.0f) + (2.0f * p2) - (p3 / 2.0f);
+    float c = (-p0 / 2.0f) + (p2 / 2.0f);
+    float d = p1;
+
+    return a * t * t * t + b * t * t + c * t + d;
+}
 
 PitchShifterManager::PitchShifterManager()
     : writePos(0)
@@ -6,8 +18,9 @@ PitchShifterManager::PitchShifterManager()
     , shiftFactor(1.0f)
     , bufferSize(88200)
     , crossfadePos(0.0f)
-    , crossfadeDuration(0.01f) // Default to 10ms
-    , sampleRate(44100.0f) // Default sample rate
+    , crossfadeDuration(0.01f)
+    , sampleRate(44100.0f)
+    , noiseAmplitude(0.0005f) // Ensure a very low amplitude
 {
     buffer.setSize(1, bufferSize);
     buffer.clear();
@@ -30,8 +43,12 @@ void PitchShifterManager::reset()
 
 void PitchShifterManager::setShiftFactor(float newShiftFactor)
 {
-    // Ensure shift factor is valid and bounded
     shiftFactor = juce::jlimit(0.5f, 2.0f, newShiftFactor);
+}
+
+void PitchShifterManager::setNoiseAmplitude(float amplitude)
+{
+    noiseAmplitude = juce::jlimit(0.0f, 0.001f, amplitude); // Ensure amplitude is within a reasonable range
 }
 
 void PitchShifterManager::process(float& sample)
@@ -45,12 +62,20 @@ void PitchShifterManager::process(float& sample)
 
     // Calculate read positions based on shift factor
     float tempReadPos = readPos;
-    int readPosIndex1 = static_cast<int>(tempReadPos) % bufferSize;
-    int readPosIndex2 = (readPosIndex1 + 1) % bufferSize;
+    int readPosIndex = static_cast<int>(tempReadPos) % bufferSize;
+
+    // Indices for cubic interpolation
+    int i0 = (readPosIndex - 1 + bufferSize) % bufferSize;
+    int i1 = readPosIndex;
+    int i2 = (readPosIndex + 1) % bufferSize;
+    int i3 = (readPosIndex + 2) % bufferSize;
+
+    // Fractional part for interpolation
     float frac = tempReadPos - std::floor(tempReadPos);
 
-    // Linear interpolation for the read position
-    float out = channelData[readPosIndex1] * (1.0f - frac) + channelData[readPosIndex2] * frac;
+    // Perform cubic interpolation
+    float out = cubicInterpolate(
+        channelData[i0], channelData[i1], channelData[i2], channelData[i3], frac);
 
     // Update read position
     tempReadPos += shiftFactor;
@@ -60,6 +85,9 @@ void PitchShifterManager::process(float& sample)
     // Set the updated read position
     readPos = tempReadPos;
 
+    // Add controlled noise to the output sample
+    out += generateNoise() * noiseAmplitude; // Apply amplitude directly here
+
     // Output the pitch-shifted sample
     sample = out;
 }
@@ -68,4 +96,10 @@ void PitchShifterManager::process(float& sample)
 void PitchShifterManager::calculateCrossfadeIncrement()
 {
     crossfadeIncrement = 1.0f / (crossfadeDuration * sampleRate);
+}
+
+// Generate controlled noise
+float PitchShifterManager::generateNoise() const
+{
+    return juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f; // [-1, 1] range
 }
