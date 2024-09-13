@@ -1,8 +1,7 @@
 #include "LFOManager.h"
 
 const std::array<float, LFOManager::NUM_PRESET_FREQUENCIES> LFOManager::presetFrequencies = {
-    0.1f, 3.0f, 0.2f, 4.0f, 0.3f, 5.0f, 0.4f, 6.0f, 0.5f, 7.0f,
-    0.6f, 8.0f, 0.7f, 9.0f, 0.8f, 10.0f, 0.9f, 11.0f, 1.0f, 12.0f
+    125.0f, 150.0f, 60.0f, 25.0f, 200.0f, 100.0f, 0.90f, 110.0f, 45.5f, 275.0f
 };
 
 LFOManager::LFOManager()
@@ -33,7 +32,7 @@ void LFOManager::setRate(float rateHz)
 
 void LFOManager::setDepth(float depthMs)
 {
-    depth = depthMs / 1000.0f; // Convert ms to seconds
+    depth = (depthMs * 4.0f) / 1000.0f; // Convert ms to seconds
 }
 
 float LFOManager::getNextSample()
@@ -65,7 +64,7 @@ void LFOManager::calculateAndSetRate(int index)
     else
     {
         // Fallback to a default rate if the index is out of bounds
-        setRate(1.0f);
+        setRate(15.0f);
     }
 }
 
