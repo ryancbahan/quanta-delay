@@ -14,7 +14,6 @@
 #include "DelayManager.h"
 #include "StereoFieldManager.h"
 #include "LFOManager.h"
-#include "TremoloManager.h"
 #include "PitchShifterManager.h"
 #include "FilterManager.h"
 
@@ -85,7 +84,6 @@ private:
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersRight;
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersLeft;
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersRight;
-    std::array<TremoloManager, MAX_DELAY_LINES> tremoloManagers;
     std::array<PitchShifterManager, MAX_DELAY_LINES> pitchShifterManagers;
     
     FilterManager highPassFilter;

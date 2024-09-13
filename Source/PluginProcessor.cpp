@@ -37,7 +37,6 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     highPassFilter.reset();
     lowPassFilter.reset();
     StereoFieldManager().reset();
-//    TremoloManager().reset();
     PitchShifterManager().reset();
 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
@@ -192,8 +191,6 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
         stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
         
-//        tremoloManagers[i].prepare(spec);
-        
         lfoManagersLeft[i].prepare(spec);
         lfoManagersRight[i].prepare(spec);
         lfoManagersLeft[i].setDepth(1.0f);
@@ -215,7 +212,6 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 void QuantadelayAudioProcessor::releaseResources()
 {
     StereoFieldManager().reset();
-//    TremoloManager().reset();
     PitchShifterManager().reset();
     highPassFilter.reset();
     lowPassFilter.reset();
@@ -305,11 +301,6 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         delayManagersRight[i].setDelayTime(currentDelayTimeRight);
         delayManagersLeft[i].setFeedback(feedbackValue);
         delayManagersRight[i].setFeedback(feedbackValue);
-        
-        const float tremRate = 0.25f / (spreadValue / 3);
-        const float tremDepth = 1.0f * (spreadValue / 5);
-        tremoloManagers[i].setDepth(tremDepth);
-        tremoloManagers[i].setRate(tremRate);
 
         if (i == 0) {
             // First delay line remains unshifted
@@ -349,28 +340,12 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
                 pitchShifterManagers[i].process(leftOutput);
                 pitchShifterManagers[i].process(rightOutput);
             }
-//            tremoloManagers[i].process(leftOutput, rightOutput);
+
             stereoManagers[i].process(leftOutput, rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
         }
-
-        // Add partial contribution from the transitioning delay line
-//        if (fullDelayLines < MAX_DELAY_LINES)
-//        {
-//            float fraction = currentDelayLines - fullDelayLines;
-//            
-//            float delayedSampleLeft = delayManagersLeft[fullDelayLines].processSample(inputSampleLeft);
-//            float delayedSampleRight = delayManagersRight[fullDelayLines].processSample(inputSampleRight);
-//            
-//            float leftOutput = delayedSampleLeft;
-//            float rightOutput = delayedSampleRight;
-//            stereoManagers[fullDelayLines].process(leftOutput, rightOutput);
-//            
-//            wetSignalLeft += fraction * leftOutput;
-//            wetSignalRight += fraction * rightOutput;
-//        }
 
 //         Scale the wet signal by the current (smoothed) number of delay lines
         wetSignalLeft /= currentDelayLines;
