@@ -289,18 +289,22 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     // Update parameters for all delay lines
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
     {
-        float currentDelayTime = delayTimeValue * std::pow(spreadValue, i);
-        delayManagersLeft[i].setDelayTime(currentDelayTime);
-        delayManagersRight[i].setDelayTime(currentDelayTime);
-        delayManagersLeft[i].setFeedback(feedbackValue);
-        delayManagersRight[i].setFeedback(feedbackValue);
-        
         float normalizedPosition = static_cast<float>(i) / static_cast<float>(MAX_DELAY_LINES - 1);
         lfoManagersLeft[i].calculateAndSetRate(i);
         lfoManagersRight[i].calculateAndSetRate(i);
         
         lfoManagersLeft[i].setDepth(depthValue);
         lfoManagersRight[i].setDepth(depthValue);
+        
+        float lfoValueLeft = lfoManagersLeft[i].getNextSample();
+        float lfoValueRight = lfoManagersRight[i].getNextSample();
+        float currentDelayTimeLeft = delayTimeValue * std::pow(spreadValue, i) + lfoValueLeft;
+        float currentDelayTimeRight = delayTimeValue * std::pow(spreadValue, i) + lfoValueRight;
+
+        delayManagersLeft[i].setDelayTime(currentDelayTimeLeft);
+        delayManagersRight[i].setDelayTime(currentDelayTimeRight);
+        delayManagersLeft[i].setFeedback(feedbackValue);
+        delayManagersRight[i].setFeedback(feedbackValue);
         
         const float tremRate = 0.25f / (spreadValue / 3);
         const float tremDepth = 1.0f * (spreadValue / 5);
@@ -335,34 +339,23 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 
         for (int i = 0; i < fullDelayLines; ++i)
         {
-            float lfoValueLeft = lfoManagersLeft[i].getNextSample();
-            float lfoValueRight = lfoManagersRight[i].getNextSample();
-            
-            float currentDelayTimeLeft = delayTimeValue * std::pow(spreadValue, i) + lfoValueLeft;
-            float currentDelayTimeRight = delayTimeValue * std::pow(spreadValue, i) + lfoValueRight;
-
-            delayManagersLeft[i].setDelayTime(currentDelayTimeLeft);
-            delayManagersRight[i].setDelayTime(currentDelayTimeRight);
-            delayManagersLeft[i].setFeedback(feedbackValue);
-            delayManagersRight[i].setFeedback(feedbackValue);
-            
             float delayedSampleLeft = delayManagersLeft[i].processSample(inputSampleLeft);
             float delayedSampleRight = delayManagersRight[i].processSample(inputSampleRight);
-            
+//            
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
-            leftOutput = highPassFilter.processSample(leftOutput);
-            rightOutput = highPassFilter.processSample(rightOutput);
-            leftOutput = lowPassFilter.processSample(leftOutput);
-            rightOutput = lowPassFilter.processSample(rightOutput);
-            
-            if (i < octavesValue) {
-                pitchShifterManagers[i].process(leftOutput);
-                pitchShifterManagers[i].process(rightOutput);
-            }
-            tremoloManagers[i].process(leftOutput, rightOutput);
-            stereoManagers[i].process(leftOutput, rightOutput);
-            
+//            leftOutput = highPassFilter.processSample(leftOutput);
+//            rightOutput = highPassFilter.processSample(rightOutput);
+//            leftOutput = lowPassFilter.processSample(leftOutput);
+//            rightOutput = lowPassFilter.processSample(rightOutput);
+//            
+//            if (i < octavesValue) {
+//                pitchShifterManagers[i].process(leftOutput);
+//                pitchShifterManagers[i].process(rightOutput);
+//            }
+//            tremoloManagers[i].process(leftOutput, rightOutput);
+//            stereoManagers[i].process(leftOutput, rightOutput);
+//            
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
         }
