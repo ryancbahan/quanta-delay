@@ -33,6 +33,8 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     octavesParameter = parameters.getRawParameterValue("octaves");
     lowPassFreqParameter = parameters.getRawParameterValue("lowPassFreq");
     highPassFreqParameter = parameters.getRawParameterValue("highPassFreq");
+    dampParameter = parameters.getRawParameterValue("damp");
+
     
     highPassFilter.reset();
     lowPassFilter.reset();
@@ -99,6 +101,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("highPassFreq", 9), "High Pass Freq",
         juce::NormalisableRange<float>(20.0f, 2000.0f, 1.0f, 0.3f), 20.0f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("damp", 6), "damp",
+        juce::NormalisableRange<float>(0.0f, 20.0f), 0.0f));
     
     
     return { params.begin(), params.end() };
@@ -266,6 +272,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float octavesValue = octavesParameter->load();
     float lowPassFreq = lowPassFreqParameter->load();
     float highPassFreq = highPassFreqParameter->load();
+    float dampValue = dampParameter->load();
+
 
     lowPassFilter.setFrequency(lowPassFreq);
     highPassFilter.setFrequency(highPassFreq);

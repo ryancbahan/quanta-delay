@@ -78,6 +78,8 @@ private:
     std::atomic<float>* octavesParameter = nullptr;
     std::atomic<float>* lowPassFreqParameter = nullptr;
     std::atomic<float>* highPassFreqParameter = nullptr;
+    std::atomic<float>* dampParameter = nullptr;
+
     
     std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;

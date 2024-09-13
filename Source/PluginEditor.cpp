@@ -20,7 +20,8 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     setupKnob(depthParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(4)), 300, 12, 100, 100, "Depth");
     setupKnob(spreadParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(5)), 200, 150, 100, 100, "Spread");
     setupKnob(octavesParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(6)), 0, 150, 100, 100, "Octaves");
-    
+    setupKnob(dampParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(9)), 100, 150, 100, 100, "Damp");
+
     setupSlider(lowPassFreqSlider, audioProcessor.parameters, "lowPassFreq", "Low Pass");
     setupSlider(highPassFreqSlider, audioProcessor.parameters, "highPassFreq", "High Pass");
 }

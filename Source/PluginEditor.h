@@ -24,6 +24,7 @@ private:
     juce::Slider depthParamSlider;
     juce::Slider spreadParamSlider;
     juce::Slider octavesParamSlider;
+    juce::Slider dampParamSlider;
     
     juce::Slider lowPassFreqSlider;
     juce::Slider highPassFreqSlider;
