@@ -5,6 +5,9 @@ PitchShifterManager::PitchShifterManager()
     , readPos(0.0f)
     , shiftFactor(1.0f)
     , bufferSize(44100)
+    , crossfadePos(0.0f)
+    , crossfadeDuration(0.01f) // Default to 10ms
+    , sampleRate(44100.0f) // Default sample rate
 {
     buffer.setSize(1, bufferSize);
     buffer.clear();
@@ -12,19 +15,23 @@ PitchShifterManager::PitchShifterManager()
 
 void PitchShifterManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
+    sampleRate = spec.sampleRate;
     reset();
+    calculateCrossfadeIncrement();
 }
 
 void PitchShifterManager::reset()
 {
     writePos = 0;
     readPos = 0.0f;
+    crossfadePos = 0.0f;
     buffer.clear();
 }
 
 void PitchShifterManager::setShiftFactor(float newShiftFactor)
 {
-    shiftFactor = newShiftFactor;
+    // Ensure shift factor is valid and bounded
+    shiftFactor = juce::jlimit(0.5f, 2.0f, newShiftFactor);
 }
 
 void PitchShifterManager::process(float& sample)
@@ -33,20 +40,32 @@ void PitchShifterManager::process(float& sample)
     buffer.setSample(0, writePos, sample);
     writePos = (writePos + 1) % bufferSize;
 
-    // Read from the buffer with the pitch shift
+    // Get the buffer data
     float* channelData = buffer.getWritePointer(0);
-    int readPos1 = static_cast<int>(readPos) % bufferSize;
-    int readPos2 = (readPos1 + 1) % bufferSize;
-    float frac = readPos - std::floor(readPos);
 
-    // Linear interpolation
-    float out = channelData[readPos1] * (1.0f - frac) + channelData[readPos2] * frac;
+    // Calculate read positions based on shift factor
+    float tempReadPos = readPos;
+    int readPosIndex1 = static_cast<int>(tempReadPos) % bufferSize;
+    int readPosIndex2 = (readPosIndex1 + 1) % bufferSize;
+    float frac = tempReadPos - std::floor(tempReadPos);
+
+    // Linear interpolation for the read position
+    float out = channelData[readPosIndex1] * (1.0f - frac) + channelData[readPosIndex2] * frac;
 
     // Update read position
-    readPos += shiftFactor;
-    if (readPos >= bufferSize)
-        readPos -= bufferSize;
+    tempReadPos += shiftFactor;
+    if (tempReadPos >= bufferSize)
+        tempReadPos -= bufferSize;
+
+    // Set the updated read position
+    readPos = tempReadPos;
 
     // Output the pitch-shifted sample
     sample = out;
+}
+
+// Helper to calculate crossfade increment based on the sample rate and crossfade duration
+void PitchShifterManager::calculateCrossfadeIncrement()
+{
+    crossfadeIncrement = 1.0f / (crossfadeDuration * sampleRate);
 }
