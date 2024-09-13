@@ -344,6 +344,10 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
+            leftOutput = highPassFilter.processSample(leftOutput);
+            rightOutput = highPassFilter.processSample(rightOutput);
+            leftOutput = lowPassFilter.processSample(leftOutput);
+            rightOutput = lowPassFilter.processSample(rightOutput);
             
             if (i < octavesValue) {
                 pitchShifterManagers[i].process(leftOutput);
@@ -351,11 +355,6 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             }
             tremoloManagers[i].process(leftOutput, rightOutput);
             stereoManagers[i].process(leftOutput, rightOutput);
-            
-            leftOutput = highPassFilter.processSample(leftOutput);
-            leftOutput = lowPassFilter.processSample(leftOutput);
-            rightOutput = highPassFilter.processSample(rightOutput);
-            rightOutput = lowPassFilter.processSample(rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
