@@ -21,7 +21,7 @@
 
 
 #define MAX_DELAY_TIME 2
-#define MAX_DELAY_LINES 15
+#define MAX_DELAY_LINES 10
 
 //==============================================================================
 /**

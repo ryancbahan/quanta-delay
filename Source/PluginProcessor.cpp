@@ -91,7 +91,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuantadelayAudioProcessor::c
         juce::NormalisableRange<float>(0.5f, 0.99f), 0.875f));
     
     params.push_back(std::make_unique<juce::AudioParameterInt>(
-            juce::ParameterID("octaves", 7), "Octaves", 1, 6, 1));
+            juce::ParameterID("octaves", 7), "Octaves", 1, 11, 1));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("lowPassFreq", 8), "Low Pass Freq",
@@ -345,12 +345,12 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-//            if (i < octavesValue) {
-//                pitchShifterManagers[i].process(leftOutput);
-//                pitchShifterManagers[i].process(rightOutput);
-//            }
+            if (i < octavesValue && i < fullDelayLines + 1) {
+                pitchShifterManagers[i].process(leftOutput);
+                pitchShifterManagers[i].process(rightOutput);
+            }
 //            tremoloManagers[i].process(leftOutput, rightOutput);
-//            stereoManagers[i].process(leftOutput, rightOutput);
+            stereoManagers[i].process(leftOutput, rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
