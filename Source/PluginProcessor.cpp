@@ -37,7 +37,7 @@ QuantadelayAudioProcessor::QuantadelayAudioProcessor()
     highPassFilter.reset();
     lowPassFilter.reset();
     StereoFieldManager().reset();
-    TremoloManager().reset();
+//    TremoloManager().reset();
     PitchShifterManager().reset();
 
     for (int i = 0; i < MAX_DELAY_LINES; ++i)
@@ -192,7 +192,7 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
         stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
         
-        tremoloManagers[i].prepare(spec);
+//        tremoloManagers[i].prepare(spec);
         
         lfoManagersLeft[i].prepare(spec);
         lfoManagersRight[i].prepare(spec);
@@ -215,7 +215,7 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 void QuantadelayAudioProcessor::releaseResources()
 {
     StereoFieldManager().reset();
-    TremoloManager().reset();
+//    TremoloManager().reset();
     PitchShifterManager().reset();
     highPassFilter.reset();
     lowPassFilter.reset();
@@ -345,12 +345,12 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
             float leftOutput = delayedSampleLeft;
             float rightOutput = delayedSampleRight;
             
-            if (i < octavesValue) {
-                pitchShifterManagers[i].process(leftOutput);
-                pitchShifterManagers[i].process(rightOutput);
-            }
+//            if (i < octavesValue) {
+//                pitchShifterManagers[i].process(leftOutput);
+//                pitchShifterManagers[i].process(rightOutput);
+//            }
 //            tremoloManagers[i].process(leftOutput, rightOutput);
-            stereoManagers[i].process(leftOutput, rightOutput);
+//            stereoManagers[i].process(leftOutput, rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
@@ -360,14 +360,6 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 //        if (fullDelayLines < MAX_DELAY_LINES)
 //        {
 //            float fraction = currentDelayLines - fullDelayLines;
-//            float lfoValueLeft = lfoManagersLeft[fullDelayLines].getNextSample();
-//            float lfoValueRight = lfoManagersRight[fullDelayLines].getNextSample();
-//            
-//            float currentDelayTimeLeft = delayTimeValue * std::pow(spreadValue, fullDelayLines) + lfoValueLeft;
-//            float currentDelayTimeRight = delayTimeValue * std::pow(spreadValue, fullDelayLines) + lfoValueRight;
-//
-//            delayManagersLeft[fullDelayLines].setDelayTime(currentDelayTimeLeft);
-//            delayManagersRight[fullDelayLines].setDelayTime(currentDelayTimeRight);
 //            
 //            float delayedSampleLeft = delayManagersLeft[fullDelayLines].processSample(inputSampleLeft);
 //            float delayedSampleRight = delayManagersRight[fullDelayLines].processSample(inputSampleRight);
