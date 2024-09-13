@@ -21,17 +21,17 @@ public:
     void setSlope(float newSlope);
     void setQ(float newQ);
 
-    float processSample(float sample);
+    void processStereoSample(float& leftSample, float& rightSample);
 
 private:
-    void updateFilter();
-
-    juce::dsp::StateVariableTPTFilter<float> filter;
     FilterType currentType;
     float frequency;
     float slope;
     float q;
     double sampleRate;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FilterManager)
+    juce::dsp::StateVariableTPTFilter<float> filterLeft;
+    juce::dsp::StateVariableTPTFilter<float> filterRight;
+
+    void updateFilters();
 };
