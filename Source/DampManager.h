@@ -39,9 +39,9 @@ private:
     int writePos;
 
     static constexpr int MAX_ECHOES = 10;
-    static constexpr float MAX_ECHO_TIME = 1.0f; // Max echo time in seconds
+    static constexpr float MAX_ECHO_TIME = 2.0f; // Max echo time in seconds
 
-    static constexpr int MAX_REFLECTIONS = 5;
+    static constexpr int MAX_REFLECTIONS = 10;
     static constexpr float PRE_DELAY_MS = 20.0f;
 
     static constexpr int MODULATION_TABLE_SIZE = 1024;

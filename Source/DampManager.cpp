@@ -1,4 +1,6 @@
 #include "DampManager.h"
+#include <random>
+
 
 DampManager::DampManager()
     : sampleRate(44100.0f), damp(0.0f), writePos(0), smoothedDamp(0.0f), lastUpdatedDamp(0.0f),
@@ -70,7 +72,7 @@ void DampManager::precalculateValues()
         if (echoDelays[i] > 0)
         {
             float time = echoDelays[i] / sampleRate;
-            decayGains[i] = echoGains[i] * std::exp(-2.0f * time / decayTime); // Reduced decay rate
+            decayGains[i] = echoGains[i] * std::exp(-1.0f * time / decayTime); // Reduced decay rate
         }
         else
         {
@@ -205,15 +207,27 @@ void DampManager::updateEchoParameters()
     int numActiveEchoes = static_cast<int>(smoothedDamp * MAX_ECHOES) + 1;
     float totalEchoGain = 0.0f;
 
+    // Set up random number generator
+    std::mt19937 rng(static_cast<unsigned int>(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::uniform_real_distribution<float> delayJitter(-0.02f, 0.02f); // ±20ms jitter
+    std::uniform_real_distribution<float> gainJitter(0.9f, 1.1f);     // ±10% gain variation
+
     for (int i = 0; i < MAX_ECHOES; ++i)
     {
         if (i < numActiveEchoes)
         {
-            float t = static_cast<float>(i) / static_cast<float>(numActiveEchoes - 1);
+            float t = static_cast<float>(i) / static_cast<float>(numActiveEchoes);
             echoGains[i] = std::pow(1.0f - t, 1.5f);
+
+            // Apply gain jitter
+            echoGains[i] *= gainJitter(rng);
+
             totalEchoGain += echoGains[i];
 
-            float delayFactor = 0.1f + 0.9f * std::pow(t, 0.8f);
+            // Modify delayFactor with jitter
+            float delayFactor = 0.05f + 0.4f * t + delayJitter(rng);
+            delayFactor = juce::jlimit(0.0f, 1.0f, delayFactor);
+
             echoDelays[i] = static_cast<int>(delayFactor * MAX_ECHO_TIME * sampleRate);
             echoDelays[i] = std::min(echoDelays[i], echoBuffer.getNumSamples() - 1);
         }
@@ -229,11 +243,13 @@ void DampManager::updateEchoParameters()
     {
         for (int i = 0; i < numActiveEchoes; ++i)
         {
-            echoGains[i] *= (0.7f / totalEchoGain); // Adjust the total gain to 0.7f
+            echoGains[i] *= (0.7f / totalEchoGain);
         }
     }
 
     // Recalculate decay gains with the new echo gains
     precalculateValues();
 }
+
+
 
