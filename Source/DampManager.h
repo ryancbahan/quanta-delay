@@ -35,6 +35,7 @@ private:
     std::vector<int> reflectionDelays;
     std::vector<float> reflectionGains;
 
+    static constexpr float PRE_DELAY_MS = 10.0f;  // 10ms pre-delay
     static constexpr int MAX_ECHOES = 10;
     static constexpr int MAX_REFLECTIONS = 20;
     static constexpr float MAX_ECHO_TIME = 2.0f;  // Increased to 2 seconds

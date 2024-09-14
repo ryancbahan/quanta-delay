@@ -50,7 +50,8 @@ void DampManager::generateReflectionPattern()
 
     for (int i = 0; i < MAX_REFLECTIONS; ++i)
     {
-        int delay = static_cast<int>(maxDelay * (i + 1) / MAX_REFLECTIONS);
+        int preDelaySamples = static_cast<int>((PRE_DELAY_MS / 1000.0f) * sampleRate);
+        int delay = preDelaySamples + static_cast<int>(maxDelay * (i + 1) / MAX_REFLECTIONS);
         float gain = reflectionGain * std::pow(0.9f, i);
 
         reflectionDelays.push_back(delay);
