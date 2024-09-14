@@ -367,8 +367,8 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         highPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
         lowPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
 
-        leftChannel[sample] = inputSampleLeft + mixValue * wetSignalLeft;
-        rightChannel[sample] = inputSampleRight + mixValue * wetSignalRight;
+        leftChannel[sample] = inputSampleLeft + mixValue * (wetSignalLeft);
+        rightChannel[sample] = inputSampleRight + mixValue * (wetSignalRight);
     }
 }
 

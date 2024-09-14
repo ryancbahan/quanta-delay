@@ -13,19 +13,33 @@ void StereoFieldManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = static_cast<float>(spec.sampleRate);
     reset();
+
+    // Generate panning tables
+    for (int i = 0; i < PANNING_TABLE_SIZE; ++i)
+    {
+        float position = -1.0f + 2.0f * i / (PANNING_TABLE_SIZE - 1);
+        float angle = (position + 1.0f) * 0.25f * juce::MathConstants<float>::pi; // Map position to angle between 0 and pi/2
+
+        // Equal-power panning gains
+        leftPanningTable[i] = std::cos(angle);
+        rightPanningTable[i] = std::sin(angle);
+
+        // Normalize gains so that leftGain^2 + rightGain^2 = 1
+        float normalizationFactor = 1.0f / std::sqrt(leftPanningTable[i] * leftPanningTable[i] + rightPanningTable[i] * rightPanningTable[i]);
+        leftPanningTable[i] *= normalizationFactor;
+        rightPanningTable[i] *= normalizationFactor;
+    }
 }
 
 void StereoFieldManager::reset()
 {
-    smoothedPosition.reset(sampleRate, 0.05f); // 50ms smoothing time
-    smoothedPosition.setCurrentAndTargetValue(currentPosition);
+    // No per-sample processing needed
 }
 
 void StereoFieldManager::setPosition(float newPosition)
 {
-    newPosition = juce::jlimit(-1.0f, 1.0f, newPosition);
-    currentPosition = newPosition;
-    smoothedPosition.setTargetValue(newPosition);
+    currentPosition = juce::jlimit(-1.0f, 1.0f, newPosition);
+    calculateGains();
 }
 
 void StereoFieldManager::calculateAndSetPosition(int delayIndex, int totalDelays)
@@ -36,32 +50,28 @@ void StereoFieldManager::calculateAndSetPosition(int delayIndex, int totalDelays
 
 float StereoFieldManager::calculateStereoPosition(int delayIndex, int totalDelays)
 {
-    std::uniform_real_distribution<float> positionJitter(-0.1f, 0.1f); // ±0.1 randomness
+    if (totalDelays < 1)
+        totalDelays = 1;
 
-    // Avoid division by zero
-    float basePosition = (totalDelays > 1) ? (-1.0f + 2.0f * (static_cast<float>(delayIndex) / (totalDelays - 1))) : 0.0f;
+    float centerIndex = (totalDelays - 1) * 0.5f;
+    float position = (delayIndex - centerIndex) / centerIndex; // Normalize to -1.0 to 1.0
 
-    // Add randomness
-    float position = basePosition + positionJitter(rng);
+    // Reduce randomness
+    std::uniform_real_distribution<float> positionJitter(-0.02f, 0.02f);
+    float randomValue = positionJitter(rng);
 
-    // Ensure the position is within -1.0 to 1.0
-    position = juce::jlimit(-1.0f, 1.0f, position);
+    position += randomValue;
 
-    return position;
+    return juce::jlimit(-1.0f, 1.0f, position);
 }
 
-void StereoFieldManager::process(float& leftSample, float& rightSample)
+
+void StereoFieldManager::calculateGains()
 {
-    float position = smoothedPosition.getNextValue();
+    // Map currentPosition to table index
+    int index = static_cast<int>(((currentPosition + 1.0f) * 0.5f) * (PANNING_TABLE_SIZE - 1));
+    index = juce::jlimit(0, PANNING_TABLE_SIZE - 1, index);
 
-    // Map position (-1 to 1) to angle (-π/4 to π/4)
-    float angle = position * (juce::MathConstants<float>::pi / 4.0f);
-
-    // Compute gains using sine and cosine for equal power panning
-    float leftGain = std::cos(angle);
-    float rightGain = std::sin(angle);
-
-    // Apply the gains
-    leftSample *= leftGain;
-    rightSample *= rightGain;
+    leftGain = leftPanningTable[index];
+    rightGain = rightPanningTable[index];
 }
