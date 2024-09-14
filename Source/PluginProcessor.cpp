@@ -362,8 +362,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         wetSignalLeft /= currentDelayLines;
         wetSignalRight /= currentDelayLines;
         
-        dampManager.process(wetSignalLeft);
-        dampManager.process(wetSignalRight);
+        dampManager.process(wetSignalLeft, wetSignalRight);
         
         highPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
         lowPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
