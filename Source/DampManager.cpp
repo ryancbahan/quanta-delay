@@ -151,8 +151,10 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
     float currentTime = static_cast<float>(writePos) / sampleRate;
     int modulationIndex = static_cast<int>(currentTime * modulationRate * MODULATION_TABLE_SIZE) % MODULATION_TABLE_SIZE;
 
+    int totalDelays = MAX_ECHOES + MAX_REFLECTIONS;
+
     // Process echoes and reflections
-    for (int i = 0; i < MAX_ECHOES + MAX_REFLECTIONS; ++i)
+    for (int i = 0; i < totalDelays; ++i)
     {
         int delay, readPos;
         float gain;
@@ -170,7 +172,6 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
 
         readPos = (writePos - delay + echoBuffer.getNumSamples()) % echoBuffer.getNumSamples();
 
-        // Ensure readPos is within bounds
         if (readPos < 0 || readPos >= echoBuffer.getNumSamples())
             continue;
 
@@ -180,7 +181,8 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
         int sampleModIndex = (modulationIndex + delay) % MODULATION_TABLE_SIZE;
         delayedSampleLeft *= modulationTable[sampleModIndex];
         delayedSampleRight *= modulationTable[sampleModIndex];
-        
+
+        // Apply stereo processing to the individual echo/reflection
         stereoManagers[i].process(delayedSampleLeft, delayedSampleRight);
 
         outputLeft += delayedSampleLeft * gain;
@@ -201,6 +203,7 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
         lastUpdatedDamp = smoothedDamp;
     }
 }
+
 
 void DampManager::updateEchoParameters()
 {

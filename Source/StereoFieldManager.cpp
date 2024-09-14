@@ -1,5 +1,6 @@
 #include "StereoFieldManager.h"
 #include <cmath>
+#include <random>
 
 StereoFieldManager::StereoFieldManager()
     : sampleRate(44100.0f)
@@ -33,20 +34,22 @@ void StereoFieldManager::calculateAndSetPosition(int delayIndex, int totalDelays
 
 float StereoFieldManager::calculateStereoPosition(int delayIndex, int totalDelays)
 {
-    // This formula creates a deterministic but varied distribution
-    // across the stereo field (-1.0 to 1.0)
-    float position = std::sin(delayIndex * 2.39996323f) * 2.0f - 1.0f;
-    
-    // Ensure the first delay is centered and the last two are hard left/right
-    if (delayIndex == 0)
-        position = 0.0f;
-    else if (delayIndex == totalDelays - 1)
-        position = -1.0f;
-    else if (delayIndex == totalDelays - 2)
-        position = 1.0f;
-    
+    static std::mt19937 rng(static_cast<unsigned int>(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::uniform_real_distribution<float> positionJitter(-0.1f, 0.1f); // ±0.1 randomness
+
+    // Distribute positions evenly
+    float basePosition = -1.0f + 2.0f * (static_cast<float>(delayIndex) / (totalDelays - 1));
+
+    // Add randomness
+    float position = basePosition + positionJitter(rng);
+
+    // Ensure the position is within -1.0 to 1.0
+    position = juce::jlimit(-1.0f, 1.0f, position);
+
     return position;
 }
+
+
 
 #include <JuceHeader.h> // Ensure you include JUCE header for MathConstants
 
