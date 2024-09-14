@@ -182,6 +182,8 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     
     highPassFilter.prepare(spec);
     lowPassFilter.prepare(spec);
+    
+    dampManager.prepare(spec);
 
     float initialDelayTime = *delayTimeParameter;
 
@@ -274,6 +276,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     float highPassFreq = highPassFreqParameter->load();
     float dampValue = dampParameter->load();
 
+    dampManager.setDamp(dampValue);
 
     lowPassFilter.setFrequency(lowPassFreq);
     highPassFilter.setFrequency(highPassFreq);
@@ -358,6 +361,9 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 //         Scale the wet signal by the current (smoothed) number of delay lines
         wetSignalLeft /= currentDelayLines;
         wetSignalRight /= currentDelayLines;
+        
+        dampManager.process(wetSignalLeft);
+        dampManager.process(wetSignalRight);
         
         highPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
         lowPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
