@@ -2,19 +2,15 @@
 
 DampManager::DampManager()
     : sampleRate(44100.0f), damp(0.0f), writePos(0), smoothedDamp(0.0f), lastUpdatedDamp(0.0f),
-      smoothedDamping(0.001f), lastSample(0.0f), roomSize(1.0f), reflectionGain(0.7f)
+      smoothedDamping(0.001f), roomSize(1.0f), reflectionGain(0.7f),
+      decayTime(1.5f), modulationRate(0.5f), modulationDepth(0.1f), modulationPhase(0.0f),
+      initialCutoff(20000.0f), cutoffDecayRate(0.5f)
 {
     echoBuffer.setSize(1, static_cast<int>(MAX_ECHO_TIME * sampleRate) + 1);
-}
-
-float DampManager::cubicInterpolation(float y0, float y1, float y2, float y3, float t)
-{
-    float a0 = y3 - y2 - y0 + y1;
-    float a1 = y0 - y1 - a0;
-    float a2 = y2 - y0;
-    float a3 = y1;
-
-    return (a0 * t * t * t) + (a1 * t * t) + (a2 * t) + a3;
+    echoDelays.fill(0);
+    echoGains.fill(0.0f);
+    decayGains.fill(1.0f);
+    reflectionDecayGains.fill(1.0f);
 }
 
 void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
@@ -23,6 +19,10 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
     reset();
     updateEchoParameters();
     generateReflectionPattern();
+    precalculateValues();
+
+    lowpassCoeffs = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
+    lowpassFilter.coefficients = &lowpassCoeffs;
 }
 
 void DampManager::reset()
@@ -32,13 +32,42 @@ void DampManager::reset()
     smoothedDamp = damp;
     lastUpdatedDamp = damp;
     smoothedDamping.reset(sampleRate, 0.1);
-    lastSample = 0.0f;
+    modulationPhase = 0.0f;
+    lowpassFilter.reset();
 }
 
 void DampManager::setDamp(float newDamp)
 {
-    damp = juce::jlimit(0.0f, 20.0f, newDamp);
+    damp = juce::jlimit(0.0f, 1.0f, newDamp);
     smoothedDamping.setTargetValue(damp);
+}
+
+void DampManager::precalculateValues()
+{
+    for (int i = 0; i < MODULATION_TABLE_SIZE; ++i)
+    {
+        float phase = 2.0f * juce::MathConstants<float>::pi * i / MODULATION_TABLE_SIZE;
+        modulationTable[i] = 1.0f + modulationDepth * std::sin(phase);
+    }
+
+    for (int i = 0; i < MAX_ECHOES; ++i)
+    {
+        if (echoDelays[i] > 0)
+        {
+            float time = echoDelays[i] / sampleRate;
+            decayGains[i] = echoGains[i] * std::exp(-3.0f * time / decayTime);
+        }
+        else
+        {
+            decayGains[i] = 0.0f;
+        }
+    }
+
+    for (size_t i = 0; i < reflectionDelays.size(); ++i)
+    {
+        float time = reflectionDelays[i] / sampleRate;
+        reflectionDecayGains[i] = reflectionGains[i] * std::exp(-3.0f * time / decayTime);
+    }
 }
 
 void DampManager::generateReflectionPattern()
@@ -47,13 +76,12 @@ void DampManager::generateReflectionPattern()
     reflectionGains.clear();
 
     int maxDelay = static_cast<int>(roomSize * sampleRate);
+    int preDelaySamples = static_cast<int>((PRE_DELAY_MS / 1000.0f) * sampleRate);
 
     for (int i = 0; i < MAX_REFLECTIONS; ++i)
     {
-        int preDelaySamples = static_cast<int>((PRE_DELAY_MS / 1000.0f) * sampleRate);
         int delay = preDelaySamples + static_cast<int>(maxDelay * (i + 1) / MAX_REFLECTIONS);
-        float gain = reflectionGain * std::pow(0.9f, i);
-
+        float gain = reflectionGain;
         reflectionDelays.push_back(delay);
         reflectionGains.push_back(gain);
     }
@@ -70,31 +98,37 @@ void DampManager::process(float& sample)
     echoBuffer.setSample(0, writePos, sample);
 
     float output = 0.0f;
+    float currentTime = static_cast<float>(writePos) / sampleRate;
+    int modulationIndex = static_cast<int>(currentTime * modulationRate * MODULATION_TABLE_SIZE) % MODULATION_TABLE_SIZE;
 
-    // Process damping effect
-    for (int i = 0; i < MAX_ECHOES; ++i)
+    // Process echoes and reflections
+    for (int i = 0; i < MAX_ECHOES + MAX_REFLECTIONS; ++i)
     {
-        if (echoDelays[i] == 0) break;
+        int delay, readPos;
+        float gain;
 
-        int readPos = writePos - echoDelays[i];
-        if (readPos < 0) readPos += echoBuffer.getNumSamples();
+        if (i < MAX_ECHOES) {
+            if (echoDelays[i] == 0) break;
+            delay = echoDelays[i];
+            gain = decayGains[i];
+        } else {
+            int j = i - MAX_ECHOES;
+            if (j >= reflectionDelays.size()) break;
+            delay = reflectionDelays[j];
+            gain = reflectionDecayGains[j];
+        }
 
+        readPos = (writePos - delay + echoBuffer.getNumSamples()) % echoBuffer.getNumSamples();
         float delayedSample = echoBuffer.getSample(0, readPos);
-        output += delayedSample * echoGains[i];
+        
+        int sampleModIndex = (modulationIndex + delay) % MODULATION_TABLE_SIZE;
+        delayedSample *= modulationTable[sampleModIndex];
+        
+        output += delayedSample * gain;
     }
 
-    // Add reflections
-    for (size_t i = 0; i < reflectionDelays.size(); ++i)
-    {
-        int readPos = writePos - reflectionDelays[i];
-        if (readPos < 0) readPos += echoBuffer.getNumSamples();
-
-        float delayedSample = echoBuffer.getSample(0, readPos);
-        output += delayedSample * reflectionGains[i];
-    }
-
-    float dampIntensity = smoothedDamp / 10.0f;
-    sample = sample * (1.0f - dampIntensity) + output * dampIntensity;
+    output = lowpassFilter.processSample(output);
+    sample = sample * (1.0f - smoothedDamp) + output * smoothedDamp;
 
     writePos = (writePos + 1) % echoBuffer.getNumSamples();
 
@@ -107,8 +141,7 @@ void DampManager::process(float& sample)
 
 void DampManager::updateEchoParameters()
 {
-    float normalizedDamp = smoothedDamp / 20.0f;
-    int numActiveEchoes = static_cast<int>(normalizedDamp * MAX_ECHOES) + 1;
+    int numActiveEchoes = static_cast<int>(smoothedDamp * MAX_ECHOES) + 1;
 
     for (int i = 0; i < MAX_ECHOES; ++i)
     {
@@ -126,4 +159,6 @@ void DampManager::updateEchoParameters()
             echoDelays[i] = 0;
         }
     }
+
+    precalculateValues();
 }
