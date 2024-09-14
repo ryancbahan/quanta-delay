@@ -17,26 +17,27 @@ DampManager::DampManager()
 
 void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
-
     sampleRate = static_cast<float>(spec.sampleRate);
     reset();
     updateEchoParameters();
     generateReflectionPattern();
     precalculateValues();
     
-    for (int i = 0; i < MAX_ECHOES + MAX_REFLECTIONS; ++i) {
+    int totalDelays = MAX_ECHOES + MAX_REFLECTIONS;
+    for (int i = 0; i < totalDelays; ++i) {
         stereoManagers[i].prepare(spec);
-        stereoManagers[i].calculateAndSetPosition(i, MAX_ECHOES + MAX_REFLECTIONS);
+        stereoManagers[i].calculateAndSetPosition(i, totalDelays);
     }
 
     // Set the initial cutoff frequency higher if needed
-    initialCutoff = 15000.0f; // Increase cutoff to 15kHz
+    initialCutoff = 10000.0f; // Increase cutoff to 10kHz
     lowpassCoeffsLeft = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
     *lowpassFilterLeft.coefficients = *lowpassCoeffsLeft;
 
     lowpassCoeffsRight = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
     *lowpassFilterRight.coefficients = *lowpassCoeffsRight;
 }
+
 
 void DampManager::reset()
 {
@@ -105,28 +106,29 @@ void DampManager::generateReflectionPattern()
     {
         int delay = preDelaySamples + static_cast<int>(maxDelay * (i + 1) / (MAX_REFLECTIONS + 1));
 
-        // Ensure delay does not exceed buffer size
         delay = std::min(delay, echoBuffer.getNumSamples() - 1);
 
-        float gain = std::pow(1.5f, i); // Decreasing gain for each reflection
+        // Adjust the gain calculation to have higher initial values
+        float gain = std::pow(1.5f, i); // Less decrease per reflection
         totalReflectionGain += gain;
 
         reflectionDelays.push_back(delay);
         reflectionGains.push_back(gain);
     }
 
-    // Normalize reflection gains
+    // Normalize reflection gains to a higher total gain
+    float desiredTotalReflectionGain = 2.0f; // Increase to make reflections more pronounced
     if (totalReflectionGain > 0.0f)
     {
         for (size_t i = 0; i < reflectionGains.size(); ++i)
         {
-            reflectionGains[i] *= (1.0f / totalReflectionGain); // Adjust the total gain to 1.0f
+            reflectionGains[i] *= (desiredTotalReflectionGain / totalReflectionGain);
         }
     }
 
-    // Resize reflectionDecayGains to match the new size
     reflectionDecayGains.resize(reflectionDelays.size(), 1.0f);
 }
+
 
 
 

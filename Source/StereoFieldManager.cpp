@@ -48,13 +48,18 @@ float StereoFieldManager::calculateStereoPosition(int delayIndex, int totalDelay
     return position;
 }
 
+#include <JuceHeader.h> // Ensure you include JUCE header for MathConstants
+
 void StereoFieldManager::process(float& leftSample, float& rightSample)
 {
     float position = smoothedPosition.getNextValue();
-    
-    // Calculate gains for left and right channels
-    float leftGain = 0.5f * (1.0f - position);
-    float rightGain = 0.5f * (1.0f + position);
+
+    // Map position (-1 to 1) to angle (0 to π/2)
+    float angle = (position + 1.0f) * (juce::MathConstants<float>::halfPi * 0.5f);
+
+    // Compute gains using sine and cosine for constant power panning
+    float leftGain = std::cos(angle);
+    float rightGain = std::sin(angle);
 
     // Apply the gains
     leftSample *= leftGain;
