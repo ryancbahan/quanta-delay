@@ -21,8 +21,8 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
     generateReflectionPattern();
     precalculateValues();
 
-    lowpassCoeffs = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
-    lowpassFilter.coefficients = &lowpassCoeffs;
+    lowpassCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
+    *lowpassFilter.coefficients = *lowpassCoeffs;
 }
 
 void DampManager::reset()

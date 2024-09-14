@@ -24,7 +24,7 @@ private:
     juce::SmoothedValue<float> smoothedDamping;
 
     juce::dsp::IIR::Filter<float> lowpassFilter;
-    juce::dsp::IIR::Coefficients<float> lowpassCoeffs;
+    juce::dsp::IIR::Coefficients<float>::Ptr lowpassCoeffs;
 
     float sampleRate;
     float damp;
