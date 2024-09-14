@@ -17,11 +17,16 @@ DampManager::DampManager()
 
 void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
+
     sampleRate = static_cast<float>(spec.sampleRate);
     reset();
     updateEchoParameters();
     generateReflectionPattern();
     precalculateValues();
+    
+    for (int i = 0; i < MAX_ECHOES + MAX_REFLECTIONS; ++i) {
+        stereoManagers[i].prepare(spec);
+    }
 
     // Set the initial cutoff frequency higher if needed
     initialCutoff = 15000.0f; // Increase cutoff to 15kHz
@@ -170,6 +175,9 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
         int sampleModIndex = (modulationIndex + delay) % MODULATION_TABLE_SIZE;
         delayedSampleLeft *= modulationTable[sampleModIndex];
         delayedSampleRight *= modulationTable[sampleModIndex];
+        
+        stereoManagers[i].calculateAndSetPosition(i, MAX_ECHOES + MAX_REFLECTIONS);
+        stereoManagers[i].process(delayedSampleLeft, delayedSampleRight);
 
         outputLeft += delayedSampleLeft * gain;
         outputRight += delayedSampleRight * gain;

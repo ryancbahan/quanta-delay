@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <array>
 #include <vector>
+#include "StereoFieldManager.h"
 
 class DampManager
 {
@@ -45,6 +46,9 @@ private:
 
     static constexpr int MODULATION_TABLE_SIZE = 1024;
     std::array<float, MODULATION_TABLE_SIZE> modulationTable;
+    
+    std::array<StereoFieldManager, MAX_ECHOES + MAX_REFLECTIONS> stereoManagers;
+
 
     juce::AudioBuffer<float> echoBuffer;
 
