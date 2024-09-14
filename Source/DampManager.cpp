@@ -258,11 +258,11 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
         float delayedSampleRight = echoBuffer.getSample(1, readPos) * modulationFactor;
 
         // Combine delayed samples to mono
-//        float delayedSample = (delayedSampleLeft + delayedSampleRight) * 0.5f;
+        float delayedSample = (delayedSampleLeft + delayedSampleRight) * 1.25;
 
         // Apply precomputed decay gains
-        outputLeft += delayedSampleLeft;
-        outputRight += delayedSampleRight;
+        outputLeft += delayedSample * decayGainsLeft[i];
+        outputRight += delayedSample * decayGainsRight[i];
     }
 
     // Process reflections
