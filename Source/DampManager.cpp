@@ -175,7 +175,7 @@ void DampManager::generateReflectionPattern()
     // Normalize reflection gains
     if (totalReflectionGain > 0.0f)
     {
-        float normalizationFactor = 0.7f / totalReflectionGain;
+        float normalizationFactor = 1.0f / totalReflectionGain;
         for (size_t i = 0; i < reflectionGains.size(); ++i)
         {
             reflectionGains[i] *= normalizationFactor;
@@ -258,11 +258,11 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
         float delayedSampleRight = echoBuffer.getSample(1, readPos) * modulationFactor;
 
         // Combine delayed samples to mono
-        float delayedSample = (delayedSampleLeft + delayedSampleRight) * 0.5f;
+//        float delayedSample = (delayedSampleLeft + delayedSampleRight) * 0.5f;
 
         // Apply precomputed decay gains
-        outputLeft += delayedSample * decayGainsLeft[i];
-        outputRight += delayedSample * decayGainsRight[i];
+        outputLeft += delayedSampleLeft;
+        outputRight += delayedSampleRight;
     }
 
     // Process reflections
