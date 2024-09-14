@@ -38,17 +38,17 @@ private:
 
     int writePos;
 
-    static constexpr int MAX_ECHOES = 10;
-    static constexpr float MAX_ECHO_TIME = 2.0f; // Max echo time in seconds
+    static constexpr int MAX_ECHOES = 20; // Increased number of echoes
+    static constexpr float MAX_ECHO_TIME = 1.0f; // Max echo time in seconds
 
-    static constexpr int MAX_REFLECTIONS = 10;
+    static constexpr int MAX_REFLECTIONS = 5;
     static constexpr float PRE_DELAY_MS = 20.0f;
 
     static constexpr int MODULATION_TABLE_SIZE = 1024;
     std::array<float, MODULATION_TABLE_SIZE> modulationTable;
-    
-    std::array<StereoFieldManager, MAX_ECHOES + MAX_REFLECTIONS> stereoManagers;
 
+    // Adjusted array size to cover all echoes and reflections
+    std::array<StereoFieldManager, MAX_ECHOES + MAX_REFLECTIONS> stereoManagers;
 
     juce::AudioBuffer<float> echoBuffer;
 
@@ -64,4 +64,6 @@ private:
     juce::dsp::IIR::Filter<float> lowpassFilterLeft;
     juce::dsp::IIR::Coefficients<float>::Ptr lowpassCoeffsRight;
     juce::dsp::IIR::Filter<float> lowpassFilterRight;
+
+    std::mt19937 rng; // Random number generator
 };

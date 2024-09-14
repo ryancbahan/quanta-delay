@@ -1,7 +1,6 @@
 #include "DampManager.h"
 #include <random>
 
-
 DampManager::DampManager()
     : sampleRate(44100.0f), damp(0.0f), writePos(0), smoothedDamp(0.0f), lastUpdatedDamp(0.0f),
       smoothedDamping(0.001f), roomSize(1.0f), reflectionGain(0.7f),
@@ -13,8 +12,9 @@ DampManager::DampManager()
     echoGains.fill(0.0f);
     decayGains.fill(1.0f);
 
-    // reflectionDecayGains is a vector; use resize instead of fill
-    reflectionDecayGains.clear();
+    // Seed RNG with a unique value
+    std::random_device rd;
+    rng.seed(rd());
 }
 
 void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
@@ -24,11 +24,11 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
     updateEchoParameters();
     generateReflectionPattern();
     precalculateValues();
-    
+
+    // Prepare stereo managers
     int totalDelays = MAX_ECHOES + MAX_REFLECTIONS;
     for (int i = 0; i < totalDelays; ++i) {
         stereoManagers[i].prepare(spec);
-        stereoManagers[i].calculateAndSetPosition(i, totalDelays);
     }
 
     // Set the initial cutoff frequency higher if needed
@@ -39,7 +39,6 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
     lowpassCoeffsRight = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
     *lowpassFilterRight.coefficients = *lowpassCoeffsRight;
 }
-
 
 void DampManager::reset()
 {
@@ -72,7 +71,7 @@ void DampManager::precalculateValues()
         if (echoDelays[i] > 0)
         {
             float time = echoDelays[i] / sampleRate;
-            decayGains[i] = echoGains[i] * std::exp(-1.0f * time / decayTime); // Reduced decay rate
+            decayGains[i] = echoGains[i] * std::exp(-1.0f * time / decayTime);
         }
         else
         {
@@ -86,11 +85,9 @@ void DampManager::precalculateValues()
     for (size_t i = 0; i < reflectionDelays.size(); ++i)
     {
         float time = reflectionDelays[i] / sampleRate;
-        reflectionDecayGains[i] = reflectionGains[i] * std::exp(-2.0f * time / decayTime); // Reduced decay rate
+        reflectionDecayGains[i] = reflectionGains[i] * std::exp(-2.0f * time / decayTime);
     }
 }
-
-
 
 void DampManager::generateReflectionPattern()
 {
@@ -111,7 +108,7 @@ void DampManager::generateReflectionPattern()
         delay = std::min(delay, echoBuffer.getNumSamples() - 1);
 
         // Adjust the gain calculation to have higher initial values
-        float gain = std::pow(1.5f, i); // Less decrease per reflection
+        float gain = std::pow(1.5f, i);
         totalReflectionGain += gain;
 
         reflectionDelays.push_back(delay);
@@ -129,11 +126,15 @@ void DampManager::generateReflectionPattern()
     }
 
     reflectionDecayGains.resize(reflectionDelays.size(), 1.0f);
+
+    // Recalculate positions for reflections
+    size_t numReflections = reflectionDelays.size();
+    for (size_t j = 0; j < numReflections; ++j)
+    {
+        int i = MAX_ECHOES + static_cast<int>(j);
+        stereoManagers[i].calculateAndSetPosition(static_cast<int>(j), static_cast<int>(numReflections));
+    }
 }
-
-
-
-
 
 void DampManager::process(float& sampleLeft, float& sampleRight)
 {
@@ -204,14 +205,12 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
     }
 }
 
-
 void DampManager::updateEchoParameters()
 {
     int numActiveEchoes = static_cast<int>(smoothedDamp * MAX_ECHOES) + 1;
     float totalEchoGain = 0.0f;
 
-    // Set up random number generator
-    std::mt19937 rng(static_cast<unsigned int>(std::chrono::steady_clock::now().time_since_epoch().count()));
+    // Use the class member RNG
     std::uniform_real_distribution<float> delayJitter(-0.02f, 0.02f); // ±20ms jitter
     std::uniform_real_distribution<float> gainJitter(0.9f, 1.1f);     // ±10% gain variation
 
@@ -219,7 +218,8 @@ void DampManager::updateEchoParameters()
     {
         if (i < numActiveEchoes)
         {
-            float t = static_cast<float>(i) / static_cast<float>(numActiveEchoes);
+            // Avoid division by zero
+            float t = (numActiveEchoes > 1) ? (static_cast<float>(i) / static_cast<float>(numActiveEchoes - 1)) : 0.0f;
             echoGains[i] = std::pow(1.0f - t, 1.5f);
 
             // Apply gain jitter
@@ -233,6 +233,9 @@ void DampManager::updateEchoParameters()
 
             echoDelays[i] = static_cast<int>(delayFactor * MAX_ECHO_TIME * sampleRate);
             echoDelays[i] = std::min(echoDelays[i], echoBuffer.getNumSamples() - 1);
+
+            // Calculate and set stereo position for this echo
+            stereoManagers[i].calculateAndSetPosition(i, numActiveEchoes);
         }
         else
         {
@@ -253,6 +256,3 @@ void DampManager::updateEchoParameters()
     // Recalculate decay gains with the new echo gains
     precalculateValues();
 }
-
-
-
