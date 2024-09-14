@@ -5,8 +5,10 @@ DampManager::DampManager()
     : sampleRate(44100.0f), damp(0.0f), writePos(0), smoothedDamp(0.0f), lastUpdatedDamp(0.0f),
       smoothedDamping(0.001f), roomSize(1.0f), reflectionGain(0.7f),
       decayTime(1.5f), modulationRate(0.5f), modulationDepth(0.1f), modulationPhase(0.0f),
-      initialCutoff(20000.0f), cutoffDecayRate(0.5f)
+      initialCutoff(20000.0f), cutoffDecayRate(0.5f),
+      numActiveEchoes(0), numActiveReflections(0)
 {
+    // Initialize the echo buffer size
     echoBuffer.setSize(2, static_cast<int>(MAX_ECHO_TIME * sampleRate) + 1);
     echoDelays.fill(0);
     echoGains.fill(0.0f);
@@ -21,8 +23,8 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = static_cast<float>(spec.sampleRate);
     reset();
-    updateEchoParameters();
-    generateReflectionPattern();
+    generateReflectionPattern(); // Generate reflections first
+    updateEchoParameters();      // Update echoes and positions
     precalculateValues();
 
     // Prepare stereo managers
@@ -34,10 +36,13 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
     // Set the initial cutoff frequency higher if needed
     initialCutoff = 10000.0f; // Increase cutoff to 10kHz
     lowpassCoeffsLeft = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
-    *lowpassFilterLeft.coefficients = *lowpassCoeffsLeft;
+    lowpassFilterLeft.coefficients = lowpassCoeffsLeft;
 
     lowpassCoeffsRight = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, initialCutoff);
-    *lowpassFilterRight.coefficients = *lowpassCoeffsRight;
+    lowpassFilterRight.coefficients = lowpassCoeffsRight;
+
+    // Calculate integer modulation rate for efficient computation
+    modulationRateInt = static_cast<int>(modulationRate * MODULATION_TABLE_SIZE / sampleRate);
 }
 
 void DampManager::reset()
@@ -60,12 +65,14 @@ void DampManager::setDamp(float newDamp)
 
 void DampManager::precalculateValues()
 {
+    // Precompute the modulation table
     for (int i = 0; i < MODULATION_TABLE_SIZE; ++i)
     {
         float phase = 2.0f * juce::MathConstants<float>::pi * i / MODULATION_TABLE_SIZE;
         modulationTable[i] = 1.0f + modulationDepth * std::sin(phase);
     }
 
+    // Recalculate decay gains for echoes
     for (int i = 0; i < MAX_ECHOES; ++i)
     {
         if (echoDelays[i] > 0)
@@ -82,6 +89,7 @@ void DampManager::precalculateValues()
     // Ensure reflectionDecayGains has the correct size
     reflectionDecayGains.resize(reflectionDelays.size());
 
+    // Recalculate decay gains for reflections
     for (size_t i = 0; i < reflectionDelays.size(); ++i)
     {
         float time = reflectionDelays[i] / sampleRate;
@@ -128,86 +136,18 @@ void DampManager::generateReflectionPattern()
     reflectionDecayGains.resize(reflectionDelays.size(), 1.0f);
 
     // Recalculate positions for reflections
-    size_t numReflections = reflectionDelays.size();
-    for (size_t j = 0; j < numReflections; ++j)
+    numActiveReflections = static_cast<int>(reflectionDelays.size());
+    for (size_t j = 0; j < reflectionDelays.size(); ++j)
     {
         int i = MAX_ECHOES + static_cast<int>(j);
-        stereoManagers[i].calculateAndSetPosition(static_cast<int>(j), static_cast<int>(numReflections));
-    }
-}
-
-void DampManager::process(float& sampleLeft, float& sampleRight)
-{
-    smoothedDamp = smoothedDamping.getNextValue();
-
-    if (smoothedDamp < 0.01f) {
-        return;
-    }
-
-    echoBuffer.setSample(0, writePos, sampleLeft);
-    echoBuffer.setSample(1, writePos, sampleRight);
-
-    float outputLeft = 0.0f;
-    float outputRight = 0.0f;
-    float currentTime = static_cast<float>(writePos) / sampleRate;
-    int modulationIndex = static_cast<int>(currentTime * modulationRate * MODULATION_TABLE_SIZE) % MODULATION_TABLE_SIZE;
-
-    int totalDelays = MAX_ECHOES + MAX_REFLECTIONS;
-
-    // Process echoes and reflections
-    for (int i = 0; i < totalDelays; ++i)
-    {
-        int delay, readPos;
-        float gain;
-
-        if (i < MAX_ECHOES) {
-            if (echoDelays[i] == 0) continue;
-            delay = echoDelays[i];
-            gain = decayGains[i];
-        } else {
-            int j = i - MAX_ECHOES;
-            if (j >= reflectionDelays.size()) break;
-            delay = reflectionDelays[j];
-            gain = reflectionDecayGains[j];
-        }
-
-        readPos = (writePos - delay + echoBuffer.getNumSamples()) % echoBuffer.getNumSamples();
-
-        if (readPos < 0 || readPos >= echoBuffer.getNumSamples())
-            continue;
-
-        float delayedSampleLeft = echoBuffer.getSample(0, readPos);
-        float delayedSampleRight = echoBuffer.getSample(1, readPos);
-
-        int sampleModIndex = (modulationIndex + delay) % MODULATION_TABLE_SIZE;
-        delayedSampleLeft *= modulationTable[sampleModIndex];
-        delayedSampleRight *= modulationTable[sampleModIndex];
-
-        // Apply stereo processing to the individual echo/reflection
-        stereoManagers[i].process(delayedSampleLeft, delayedSampleRight);
-
-        outputLeft += delayedSampleLeft * gain;
-        outputRight += delayedSampleRight * gain;
-    }
-
-    outputLeft = lowpassFilterLeft.processSample(outputLeft);
-    outputRight = lowpassFilterRight.processSample(outputRight);
-
-    sampleLeft = sampleLeft * (1.0f - smoothedDamp) + outputLeft * smoothedDamp;
-    sampleRight = sampleRight * (1.0f - smoothedDamp) + outputRight * smoothedDamp;
-
-    writePos = (writePos + 1) % echoBuffer.getNumSamples();
-
-    if (std::abs(smoothedDamp - lastUpdatedDamp) > 0.01f)
-    {
-        updateEchoParameters();
-        lastUpdatedDamp = smoothedDamp;
+        stereoManagers[i].calculateAndSetPosition(static_cast<int>(j), numActiveReflections);
     }
 }
 
 void DampManager::updateEchoParameters()
 {
-    int numActiveEchoes = static_cast<int>(smoothedDamp * MAX_ECHOES) + 1;
+    numActiveEchoes = static_cast<int>(smoothedDamp * MAX_ECHOES) + 1;
+    numActiveEchoes = juce::jlimit(1, MAX_ECHOES, numActiveEchoes); // Ensure at least one echo
     float totalEchoGain = 0.0f;
 
     // Use the class member RNG
@@ -241,6 +181,7 @@ void DampManager::updateEchoParameters()
         {
             echoGains[i] = 0.0f;
             echoDelays[i] = 0;
+            decayGains[i] = 0.0f;
         }
     }
 
@@ -255,4 +196,76 @@ void DampManager::updateEchoParameters()
 
     // Recalculate decay gains with the new echo gains
     precalculateValues();
+}
+
+void DampManager::process(float& sampleLeft, float& sampleRight)
+{
+    smoothedDamp = smoothedDamping.getNextValue();
+
+    if (smoothedDamp < 0.01f) {
+        writePos = (writePos + 1) % echoBuffer.getNumSamples();
+        return;
+    }
+
+    echoBuffer.setSample(0, writePos, sampleLeft);
+    echoBuffer.setSample(1, writePos, sampleRight);
+
+    float outputLeft = 0.0f;
+    float outputRight = 0.0f;
+
+    int modulationIndex = (writePos * modulationRateInt) % MODULATION_TABLE_SIZE;
+    float modulationFactor = modulationTable[modulationIndex];
+
+    int totalDelays = numActiveEchoes + numActiveReflections;
+
+    // Process echoes and reflections
+    for (int i = 0; i < totalDelays; ++i)
+    {
+        int delay;
+        float gain;
+
+        if (i < numActiveEchoes) {
+            delay = echoDelays[i];
+            gain = decayGains[i];
+        } else {
+            int j = i - numActiveEchoes;
+            if (j >= numActiveReflections) break;
+            delay = reflectionDelays[j];
+            gain = reflectionDecayGains[j];
+        }
+
+        if (gain < 0.0001f) continue;
+
+        int readPos = (writePos - delay + echoBuffer.getNumSamples()) % echoBuffer.getNumSamples();
+
+        float delayedSampleLeft = echoBuffer.getSample(0, readPos);
+        float delayedSampleRight = echoBuffer.getSample(1, readPos);
+
+        delayedSampleLeft *= modulationFactor;
+        delayedSampleRight *= modulationFactor;
+
+        // Apply stereo processing to the individual echo/reflection
+        float leftGain = stereoManagers[i].getLeftGain();
+        float rightGain = stereoManagers[i].getRightGain();
+
+        delayedSampleLeft *= leftGain;
+        delayedSampleRight *= rightGain;
+
+        outputLeft += delayedSampleLeft * gain;
+        outputRight += delayedSampleRight * gain;
+    }
+
+    outputLeft = lowpassFilterLeft.processSample(outputLeft);
+    outputRight = lowpassFilterRight.processSample(outputRight);
+
+    sampleLeft = sampleLeft * (1.0f - smoothedDamp) + outputLeft * smoothedDamp;
+    sampleRight = sampleRight * (1.0f - smoothedDamp) + outputRight * smoothedDamp;
+
+    writePos = (writePos + 1) % echoBuffer.getNumSamples();
+
+    if (std::abs(smoothedDamp - lastUpdatedDamp) > 0.01f)
+    {
+        updateEchoParameters();
+        lastUpdatedDamp = smoothedDamp;
+    }
 }

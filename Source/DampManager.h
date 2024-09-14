@@ -29,7 +29,8 @@ private:
     float roomSize;
     float reflectionGain;
     float decayTime;
-    float modulationRate;
+    float modulationRate;       // Original modulation rate (float)
+    int modulationRateInt;      // Integer modulation rate for efficient computation
     float modulationDepth;
     float modulationPhase;
 
@@ -38,7 +39,7 @@ private:
 
     int writePos;
 
-    static constexpr int MAX_ECHOES = 20; // Increased number of echoes
+    static constexpr int MAX_ECHOES = 10;       // Reduced number of echoes for optimization
     static constexpr float MAX_ECHO_TIME = 1.0f; // Max echo time in seconds
 
     static constexpr int MAX_REFLECTIONS = 5;
@@ -66,4 +67,9 @@ private:
     juce::dsp::IIR::Filter<float> lowpassFilterRight;
 
     std::mt19937 rng; // Random number generator
+
+    // New member variables introduced during optimization
+    int numActiveEchoes;        // Number of active echoes based on damping
+    int numActiveReflections;   // Number of active reflections
 };
+

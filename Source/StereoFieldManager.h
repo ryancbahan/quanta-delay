@@ -11,13 +11,17 @@ public:
     void reset();
     void setPosition(float newPosition);
     void calculateAndSetPosition(int delayIndex, int totalDelays);
-    void process(float& leftSample, float& rightSample);
+    float getLeftGain() const { return leftGain; }
+    float getRightGain() const { return rightGain; }
+    float getCurrentPosition() const { return currentPosition; }
 
 private:
     float calculateStereoPosition(int delayIndex, int totalDelays);
+    void calculateGains();
 
     float sampleRate;
     float currentPosition = 0.0f;
-    juce::SmoothedValue<float> smoothedPosition;
+    float leftGain = 0.7071f;  // Default to center position
+    float rightGain = 0.7071f;
     std::mt19937 rng; // Random number generator
 };
