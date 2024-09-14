@@ -1,5 +1,6 @@
 #include "DampManager.h"
 #include <random>
+#include <cmath>
 
 DampManager::DampManager()
     : sampleRate(44100.0f), damp(0.0f), writePos(0), smoothedDamp(0.0f), lastUpdatedDamp(0.0f),
@@ -8,12 +9,6 @@ DampManager::DampManager()
       initialCutoff(20000.0f), cutoffDecayRate(0.5f),
       numActiveEchoes(0), numActiveReflections(0)
 {
-    // Initialize the echo buffer size
-    echoBuffer.setSize(2, static_cast<int>(MAX_ECHO_TIME * sampleRate) + 1);
-    echoDelays.fill(0);
-    echoGains.fill(0.0f);
-    decayGains.fill(1.0f);
-
     // Seed RNG with a unique value
     std::random_device rd;
     rng.seed(rd());
@@ -23,8 +18,12 @@ void DampManager::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = static_cast<float>(spec.sampleRate);
     reset();
-    generateReflectionPattern(); // Generate reflections first
-    updateEchoParameters();      // Update echoes and positions
+
+    echoBuffer.setSize(2, static_cast<int>(MAX_ECHO_TIME * sampleRate) + 1);
+    echoBuffer.clear();
+
+    generateReflectionPattern();
+    updateEchoParameters();
     precalculateValues();
 
     // Prepare stereo managers
@@ -72,28 +71,78 @@ void DampManager::precalculateValues()
         modulationTable[i] = 1.0f + modulationDepth * std::sin(phase);
     }
 
-    // Recalculate decay gains for echoes
-    for (int i = 0; i < MAX_ECHOES; ++i)
+    float cumulativeLeftGain = 0.0f;
+    float cumulativeRightGain = 0.0f;
+
+    // Recalculate decay gains for echoes and compute cumulative gains
+    for (int i = 0; i < numActiveEchoes; ++i)
     {
-        if (echoDelays[i] > 0)
-        {
-            float time = echoDelays[i] / sampleRate;
-            decayGains[i] = echoGains[i] * std::exp(-1.0f * time / decayTime);
-        }
-        else
-        {
-            decayGains[i] = 0.0f;
-        }
+        float time = echoDelays[i] / sampleRate;
+        float decayGain = echoGains[i] * std::exp(-time / decayTime);
+
+        // Get panning gains
+        float leftGain = stereoManagers[i].getLeftGain();
+        float rightGain = stereoManagers[i].getRightGain();
+
+        // Store individual left and right decay gains
+        decayGainsLeft[i] = decayGain * leftGain;
+        decayGainsRight[i] = decayGain * rightGain;
+
+        cumulativeLeftGain += decayGainsLeft[i];
+        cumulativeRightGain += decayGainsRight[i];
     }
 
-    // Ensure reflectionDecayGains has the correct size
-    reflectionDecayGains.resize(reflectionDelays.size());
+    // Recalculate decay gains for reflections and compute cumulative gains
+    reflectionDecayGainsLeft.resize(reflectionDelays.size());
+    reflectionDecayGainsRight.resize(reflectionDelays.size());
 
-    // Recalculate decay gains for reflections
     for (size_t i = 0; i < reflectionDelays.size(); ++i)
     {
         float time = reflectionDelays[i] / sampleRate;
-        reflectionDecayGains[i] = reflectionGains[i] * std::exp(-2.0f * time / decayTime);
+        float decayGain = reflectionGains[i] * std::exp(-2.0f * time / decayTime);
+
+        int index = numActiveEchoes + static_cast<int>(i);
+        float leftGain = stereoManagers[index].getLeftGain();
+        float rightGain = stereoManagers[index].getRightGain();
+
+        // Store individual left and right decay gains
+        reflectionDecayGainsLeft[i] = decayGain * leftGain;
+        reflectionDecayGainsRight[i] = decayGain * rightGain;
+
+        cumulativeLeftGain += reflectionDecayGainsLeft[i];
+        cumulativeRightGain += reflectionDecayGainsRight[i];
+    }
+
+    // Normalize left channel gains if necessary
+    if (cumulativeLeftGain > 0.99f)
+    {
+        float normalizationFactorLeft = 0.99f / cumulativeLeftGain;
+
+        for (int i = 0; i < numActiveEchoes; ++i)
+        {
+            decayGainsLeft[i] *= normalizationFactorLeft;
+        }
+
+        for (size_t i = 0; i < reflectionDecayGainsLeft.size(); ++i)
+        {
+            reflectionDecayGainsLeft[i] *= normalizationFactorLeft;
+        }
+    }
+
+    // Normalize right channel gains if necessary
+    if (cumulativeRightGain > 0.99f)
+    {
+        float normalizationFactorRight = 0.99f / cumulativeRightGain;
+
+        for (int i = 0; i < numActiveEchoes; ++i)
+        {
+            decayGainsRight[i] *= normalizationFactorRight;
+        }
+
+        for (size_t i = 0; i < reflectionDecayGainsRight.size(); ++i)
+        {
+            reflectionDecayGainsRight[i] *= normalizationFactorRight;
+        }
     }
 }
 
@@ -123,17 +172,18 @@ void DampManager::generateReflectionPattern()
         reflectionGains.push_back(gain);
     }
 
-    // Normalize reflection gains to a higher total gain
-    float desiredTotalReflectionGain = 2.0f; // Increase to make reflections more pronounced
+    // Normalize reflection gains
     if (totalReflectionGain > 0.0f)
     {
+        float normalizationFactor = 0.7f / totalReflectionGain;
         for (size_t i = 0; i < reflectionGains.size(); ++i)
         {
-            reflectionGains[i] *= (desiredTotalReflectionGain / totalReflectionGain);
+            reflectionGains[i] *= normalizationFactor;
         }
     }
 
-    reflectionDecayGains.resize(reflectionDelays.size(), 1.0f);
+    reflectionDecayGainsLeft.resize(reflectionDelays.size(), 1.0f);
+    reflectionDecayGainsRight.resize(reflectionDelays.size(), 1.0f);
 
     // Recalculate positions for reflections
     numActiveReflections = static_cast<int>(reflectionDelays.size());
@@ -146,52 +196,33 @@ void DampManager::generateReflectionPattern()
 
 void DampManager::updateEchoParameters()
 {
+    smoothedDamp = smoothedDamping.getNextValue();
+
     numActiveEchoes = static_cast<int>(smoothedDamp * MAX_ECHOES) + 1;
-    numActiveEchoes = juce::jlimit(1, MAX_ECHOES, numActiveEchoes); // Ensure at least one echo
-    float totalEchoGain = 0.0f;
+    numActiveEchoes = juce::jlimit(2, MAX_ECHOES, numActiveEchoes);
+
+    // Ensure even number of echoes for symmetry
+    if (numActiveEchoes % 2 != 0)
+        numActiveEchoes -= 1;
 
     // Use the class member RNG
     std::uniform_real_distribution<float> delayJitter(-0.02f, 0.02f); // ±20ms jitter
-    std::uniform_real_distribution<float> gainJitter(0.9f, 1.1f);     // ±10% gain variation
 
-    for (int i = 0; i < MAX_ECHOES; ++i)
+    for (int i = 0; i < numActiveEchoes; ++i)
     {
-        if (i < numActiveEchoes)
-        {
-            // Avoid division by zero
-            float t = (numActiveEchoes > 1) ? (static_cast<float>(i) / static_cast<float>(numActiveEchoes - 1)) : 0.0f;
-            echoGains[i] = std::pow(1.0f - t, 1.5f);
+        // Assign equal base gain
+        echoGains[i] = 1.0f / numActiveEchoes;
 
-            // Apply gain jitter
-            echoGains[i] *= gainJitter(rng);
+        // Modify delayFactor with jitter
+        float t = (static_cast<float>(i) / static_cast<float>(numActiveEchoes - 1));
+        float delayFactor = 0.05f + 0.4f * t + delayJitter(rng);
+        delayFactor = juce::jlimit(0.0f, 1.0f, delayFactor);
 
-            totalEchoGain += echoGains[i];
+        echoDelays[i] = static_cast<int>(delayFactor * MAX_ECHO_TIME * sampleRate);
+        echoDelays[i] = std::min(echoDelays[i], echoBuffer.getNumSamples() - 1);
 
-            // Modify delayFactor with jitter
-            float delayFactor = 0.05f + 0.4f * t + delayJitter(rng);
-            delayFactor = juce::jlimit(0.0f, 1.0f, delayFactor);
-
-            echoDelays[i] = static_cast<int>(delayFactor * MAX_ECHO_TIME * sampleRate);
-            echoDelays[i] = std::min(echoDelays[i], echoBuffer.getNumSamples() - 1);
-
-            // Calculate and set stereo position for this echo
-            stereoManagers[i].calculateAndSetPosition(i, numActiveEchoes);
-        }
-        else
-        {
-            echoGains[i] = 0.0f;
-            echoDelays[i] = 0;
-            decayGains[i] = 0.0f;
-        }
-    }
-
-    // Normalize echo gains
-    if (totalEchoGain > 0.0f)
-    {
-        for (int i = 0; i < numActiveEchoes; ++i)
-        {
-            echoGains[i] *= (0.7f / totalEchoGain);
-        }
+        // Calculate and set stereo position for this echo
+        stereoManagers[i].calculateAndSetPosition(i, numActiveEchoes);
     }
 
     // Recalculate decay gains with the new echo gains
@@ -207,6 +238,7 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
         return;
     }
 
+    // Write current samples to the echo buffer
     echoBuffer.setSample(0, writePos, sampleLeft);
     echoBuffer.setSample(1, writePos, sampleRight);
 
@@ -216,48 +248,45 @@ void DampManager::process(float& sampleLeft, float& sampleRight)
     int modulationIndex = (writePos * modulationRateInt) % MODULATION_TABLE_SIZE;
     float modulationFactor = modulationTable[modulationIndex];
 
-    int totalDelays = numActiveEchoes + numActiveReflections;
-
-    // Process echoes and reflections
-    for (int i = 0; i < totalDelays; ++i)
+    // Process echoes
+    for (int i = 0; i < numActiveEchoes; ++i)
     {
-        int delay;
-        float gain;
-
-        if (i < numActiveEchoes) {
-            delay = echoDelays[i];
-            gain = decayGains[i];
-        } else {
-            int j = i - numActiveEchoes;
-            if (j >= numActiveReflections) break;
-            delay = reflectionDelays[j];
-            gain = reflectionDecayGains[j];
-        }
-
-        if (gain < 0.0001f) continue;
-
+        int delay = echoDelays[i];
         int readPos = (writePos - delay + echoBuffer.getNumSamples()) % echoBuffer.getNumSamples();
 
-        float delayedSampleLeft = echoBuffer.getSample(0, readPos);
-        float delayedSampleRight = echoBuffer.getSample(1, readPos);
+        float delayedSampleLeft = echoBuffer.getSample(0, readPos) * modulationFactor;
+        float delayedSampleRight = echoBuffer.getSample(1, readPos) * modulationFactor;
 
-        delayedSampleLeft *= modulationFactor;
-        delayedSampleRight *= modulationFactor;
+        // Combine delayed samples to mono
+        float delayedSample = (delayedSampleLeft + delayedSampleRight) * 0.5f;
 
-        // Apply stereo processing to the individual echo/reflection
-        float leftGain = stereoManagers[i].getLeftGain();
-        float rightGain = stereoManagers[i].getRightGain();
-
-        delayedSampleLeft *= leftGain;
-        delayedSampleRight *= rightGain;
-
-        outputLeft += delayedSampleLeft * gain;
-        outputRight += delayedSampleRight * gain;
+        // Apply precomputed decay gains
+        outputLeft += delayedSample * decayGainsLeft[i];
+        outputRight += delayedSample * decayGainsRight[i];
     }
 
+    // Process reflections
+    for (size_t i = 0; i < reflectionDelays.size(); ++i)
+    {
+        int delay = reflectionDelays[i];
+        int readPos = (writePos - delay + echoBuffer.getNumSamples()) % echoBuffer.getNumSamples();
+
+        float delayedSampleLeft = echoBuffer.getSample(0, readPos) * modulationFactor;
+        float delayedSampleRight = echoBuffer.getSample(1, readPos) * modulationFactor;
+
+        // Combine delayed samples to mono
+        float delayedSample = (delayedSampleLeft + delayedSampleRight) * 0.5f;
+
+        // Apply precomputed decay gains
+        outputLeft += delayedSample * reflectionDecayGainsLeft[i];
+        outputRight += delayedSample * reflectionDecayGainsRight[i];
+    }
+
+    // Apply low-pass filter
     outputLeft = lowpassFilterLeft.processSample(outputLeft);
     outputRight = lowpassFilterRight.processSample(outputRight);
 
+    // Mix the processed signal with the dry signal
     sampleLeft = sampleLeft * (1.0f - smoothedDamp) + outputLeft * smoothedDamp;
     sampleRight = sampleRight * (1.0f - smoothedDamp) + outputRight * smoothedDamp;
 
