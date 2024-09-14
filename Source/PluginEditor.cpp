@@ -16,11 +16,12 @@ QuantadelayAudioProcessorEditor::QuantadelayAudioProcessorEditor (QuantadelayAud
     setupKnob(mixParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(0)), 0, 12, 100, 100, "Mix");
     setupKnob(delayTimeParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(1)), 100, 12, 100, 100, "Delay Time");
     setupKnob(feedbackParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(2)), 200, 12, 100, 100, "Feedback");
-    setupKnob(delayLinesParamSlider, static_cast<juce::AudioParameterInt*>(params.getUnchecked(3)), 300, 150, 100, 100, "Delay Lines");
-    setupKnob(depthParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(4)), 300, 12, 100, 100, "Depth");
+    setupKnob(delayLinesParamSlider, static_cast<juce::AudioParameterInt*>(params.getUnchecked(4)), 300, 150, 100, 100, "Depth");
+    setupKnob(depthParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(3)), 300, 12, 100, 100, "Delay lines");
     setupKnob(spreadParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(5)), 200, 150, 100, 100, "Spread");
     setupKnob(octavesParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(6)), 0, 150, 100, 100, "Octaves");
-    
+    setupKnob(dampParamSlider, static_cast<juce::AudioParameterFloat*>(params.getUnchecked(9)), 100, 150, 100, 100, "Damp");
+
     setupSlider(lowPassFreqSlider, audioProcessor.parameters, "lowPassFreq", "Low Pass");
     setupSlider(highPassFreqSlider, audioProcessor.parameters, "highPassFreq", "High Pass");
 }

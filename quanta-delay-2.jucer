@@ -16,6 +16,8 @@
           file="Source/CustomLookAndFeel.cpp"/>
     <FILE id="yB7jul" name="CustomLookAndFeel.h" compile="0" resource="0"
           file="Source/CustomLookAndFeel.h"/>
+    <FILE id="QTL7UM" name="DampManager.cpp" compile="1" resource="0" file="Source/DampManager.cpp"/>
+    <FILE id="aHE9ns" name="DampManager.h" compile="0" resource="0" file="Source/DampManager.h"/>
     <FILE id="X59AzZ" name="DelayBuffer.cpp" compile="1" resource="0" file="Source/DelayBuffer.cpp"/>
     <FILE id="vSXF9G" name="DelayBuffer.h" compile="0" resource="0" file="Source/DelayBuffer.h"/>
     <FILE id="sYxbhP" name="DelayManager.cpp" compile="1" resource="0"

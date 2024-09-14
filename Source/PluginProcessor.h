@@ -16,8 +16,7 @@
 #include "LFOManager.h"
 #include "PitchShifterManager.h"
 #include "FilterManager.h"
-
-
+#include "DampManager.h"
 
 #define MAX_DELAY_TIME 2
 #define MAX_DELAY_LINES 10
@@ -78,6 +77,8 @@ private:
     std::atomic<float>* octavesParameter = nullptr;
     std::atomic<float>* lowPassFreqParameter = nullptr;
     std::atomic<float>* highPassFreqParameter = nullptr;
+    std::atomic<float>* dampParameter = nullptr;
+
     
     std::array<StereoFieldManager, MAX_DELAY_LINES> stereoManagers;
     std::array<DelayManager, MAX_DELAY_LINES> delayManagersLeft;
@@ -85,6 +86,8 @@ private:
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersLeft;
     std::array<LFOManager, MAX_DELAY_LINES> lfoManagersRight;
     std::array<PitchShifterManager, MAX_DELAY_LINES> pitchShifterManagers;
+    
+    DampManager dampManager;
     
     FilterManager highPassFilter;
     FilterManager lowPassFilter;
