@@ -4,6 +4,9 @@
 StereoFieldManager::StereoFieldManager()
     : sampleRate(44100.0f)
 {
+    // Seed RNG with a unique value
+    std::random_device rd;
+    rng.seed(rd());
 }
 
 void StereoFieldManager::prepare(const juce::dsp::ProcessSpec& spec)
@@ -15,13 +18,13 @@ void StereoFieldManager::prepare(const juce::dsp::ProcessSpec& spec)
 void StereoFieldManager::reset()
 {
     smoothedPosition.reset(sampleRate, 0.05f); // 50ms smoothing time
-    smoothedPosition.setCurrentAndTargetValue(0.0f); // Center position
+    smoothedPosition.setCurrentAndTargetValue(currentPosition);
 }
 
 void StereoFieldManager::setPosition(float newPosition)
 {
-    // Ensure the position is between -1 (full left) and 1 (full right)
     newPosition = juce::jlimit(-1.0f, 1.0f, newPosition);
+    currentPosition = newPosition;
     smoothedPosition.setTargetValue(newPosition);
 }
 
@@ -33,28 +36,30 @@ void StereoFieldManager::calculateAndSetPosition(int delayIndex, int totalDelays
 
 float StereoFieldManager::calculateStereoPosition(int delayIndex, int totalDelays)
 {
-    // This formula creates a deterministic but varied distribution
-    // across the stereo field (-1.0 to 1.0)
-    float position = std::sin(delayIndex * 2.39996323f) * 2.0f - 1.0f;
-    
-    // Ensure the first delay is centered and the last two are hard left/right
-    if (delayIndex == 0)
-        position = 0.0f;
-    else if (delayIndex == totalDelays - 1)
-        position = -1.0f;
-    else if (delayIndex == totalDelays - 2)
-        position = 1.0f;
-    
+    std::uniform_real_distribution<float> positionJitter(-0.1f, 0.1f); // ±0.1 randomness
+
+    // Avoid division by zero
+    float basePosition = (totalDelays > 1) ? (-1.0f + 2.0f * (static_cast<float>(delayIndex) / (totalDelays - 1))) : 0.0f;
+
+    // Add randomness
+    float position = basePosition + positionJitter(rng);
+
+    // Ensure the position is within -1.0 to 1.0
+    position = juce::jlimit(-1.0f, 1.0f, position);
+
     return position;
 }
 
 void StereoFieldManager::process(float& leftSample, float& rightSample)
 {
     float position = smoothedPosition.getNextValue();
-    
-    // Calculate gains for left and right channels
-    float leftGain = 0.5f * (1.0f - position);
-    float rightGain = 0.5f * (1.0f + position);
+
+    // Map position (-1 to 1) to angle (-π/4 to π/4)
+    float angle = position * (juce::MathConstants<float>::pi / 4.0f);
+
+    // Compute gains using sine and cosine for equal power panning
+    float leftGain = std::cos(angle);
+    float rightGain = std::sin(angle);
 
     // Apply the gains
     leftSample *= leftGain;

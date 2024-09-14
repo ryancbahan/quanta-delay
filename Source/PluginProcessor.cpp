@@ -195,9 +195,9 @@ void QuantadelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         float currentDelayTime = initialDelayTime * std::pow(0.66f, i);
         delayManagersLeft[i].prepare(spec, currentDelayTime);
         delayManagersRight[i].prepare(spec, currentDelayTime);
-        stereoManagers[i].prepare(spec);
+//        stereoManagers[i].prepare(spec);
 
-        stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
+//        stereoManagers[i].calculateAndSetPosition(i, MAX_DELAY_LINES);
         
         lfoManagersLeft[i].prepare(spec);
         lfoManagersRight[i].prepare(spec);
@@ -352,7 +352,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
                 pitchShifterManagers[i].process(rightOutput);
             }
 
-            stereoManagers[i].process(leftOutput, rightOutput);
+//            stereoManagers[i].process(leftOutput, rightOutput);
             
             wetSignalLeft += leftOutput;
             wetSignalRight += rightOutput;
@@ -362,8 +362,7 @@ void QuantadelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         wetSignalLeft /= currentDelayLines;
         wetSignalRight /= currentDelayLines;
         
-        dampManager.process(wetSignalLeft);
-        dampManager.process(wetSignalRight);
+        dampManager.process(wetSignalLeft, wetSignalRight);
         
         highPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
         lowPassFilter.processStereoSample(wetSignalLeft, wetSignalRight);
