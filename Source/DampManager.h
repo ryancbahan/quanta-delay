@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <vector>
 
 class DampManager
 {
@@ -14,25 +15,30 @@ public:
 
 private:
     void updateEchoParameters();
-
-    // Cubic interpolation helper function
+    void generateReflectionPattern();
     float cubicInterpolation(float y0, float y1, float y2, float y3, float t);
 
-    // JUCE-specific
-    juce::AudioBuffer<float> echoBuffer;   // Buffer for storing echoes
-    juce::SmoothedValue<float> smoothedDamping; // Smoothly changing damp parameter
+    juce::AudioBuffer<float> echoBuffer;
+    juce::SmoothedValue<float> smoothedDamping;
 
     float sampleRate;
     float damp;
     float smoothedDamp;
     float lastUpdatedDamp;
-    float lastSample = 0.0f;
+    float lastSample;
 
-    int writePos;
+    // Reflection parameters
+    float roomSize;
+    float reflectionGain;
     
-    static constexpr int MAX_ECHOES = 10;
-    static constexpr float MAX_ECHO_TIME = 1.0f;  // Maximum echo time in seconds
+    int writePos;
+    std::vector<int> reflectionDelays;
+    std::vector<float> reflectionGains;
 
-    int echoDelays[MAX_ECHOES] = { 0 };   // Array to store delay times for echoes
-    float echoGains[MAX_ECHOES] = { 0.0f };   // Array to store gains for each echo
+    static constexpr int MAX_ECHOES = 10;
+    static constexpr int MAX_REFLECTIONS = 20;
+    static constexpr float MAX_ECHO_TIME = 2.0f;  // Increased to 2 seconds
+
+    int echoDelays[MAX_ECHOES] = { 0 };
+    float echoGains[MAX_ECHOES] = { 0.0f };
 };
